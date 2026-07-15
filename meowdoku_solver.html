@@ -38,6 +38,17 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #64748b;
         }
+        /* Active tool button */
+        .tool-btn.active {
+            outline: 2px solid #818cf8;
+            outline-offset: 1px;
+            background-color: #312e81;
+        }
+        .tool-btn.region-swatch.active {
+            outline: 2px solid #ffffff;
+            outline-offset: 2px;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-between p-4 md:p-8">
@@ -68,25 +79,36 @@
         <div class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col items-center">
             
             <!-- Dashboard Toolbar -->
-            <div class="w-full flex justify-between items-center mb-4">
-                <span class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Active Game Grid</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-xs text-slate-500">Edit Tool:</span>
-                    <select id="editMode" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500">
-                        <option value="none">🔍 Info / Inspect</option>
-                        <option value="cat">🐱 Paint Cat</option>
-                        <option value="block">❌ Paint Blocked</option>
-                        <option value="region0">🎨 Paint Region 0</option>
-                        <option value="region1">🎨 Paint Region 1</option>
-                        <option value="region2">🎨 Paint Region 2</option>
-                        <option value="region3">🎨 Paint Region 3</option>
-                        <option value="region4">🎨 Paint Region 4</option>
-                        <option value="region5">🎨 Paint Region 5</option>
-                        <option value="region6">🎨 Paint Region 6</option>
-                        <option value="region7">🎨 Paint Region 7</option>
-                        <option value="region8">🎨 Paint Region 8</option>
-                        <option value="region9">🎨 Paint Region 9</option>
-                    </select>
+            <div class="w-full flex flex-col gap-3 mb-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Active Game Grid</span>
+                    <span id="activeToolLabel" class="text-xs text-indigo-400 font-semibold">🔍 Inspect</span>
+                </div>
+                <!-- Tool buttons -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="setTool('none')" class="tool-btn active flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="none">
+                        <span>🔍</span> Inspect
+                    </button>
+                    <button onclick="setTool('cat')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="cat">
+                        <span>🐱</span> Cat
+                    </button>
+                    <button onclick="setTool('block')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="block">
+                        <span>❌</span> Block
+                    </button>
+                    <div class="w-px h-6 bg-slate-700 mx-1"></div>
+                    <!-- Region color swatches -->
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="setTool('region0')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region0" style="background-color: #a2e082; color: #1a2e05" title="Region 0">0</button>
+                        <button onclick="setTool('region1')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region1" style="background-color: #2d8a4e; color: #ffffff" title="Region 1">1</button>
+                        <button onclick="setTool('region2')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region2" style="background-color: #f199e8; color: #2e0a28" title="Region 2">2</button>
+                        <button onclick="setTool('region3')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region3" style="background-color: #8b7feb; color: #1a1833" title="Region 3">3</button>
+                        <button onclick="setTool('region4')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region4" style="background-color: #d9a406; color: #2e2300" title="Region 4">4</button>
+                        <button onclick="setTool('region5')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region5" style="background-color: #a7cdf2; color: #0a1a2e" title="Region 5">5</button>
+                        <button onclick="setTool('region6')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region6" style="background-color: #fce18a; color: #2e2a05" title="Region 6">6</button>
+                        <button onclick="setTool('region7')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region7" style="background-color: #ab754f; color: #ffffff" title="Region 7">7</button>
+                        <button onclick="setTool('region8')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region8" style="background-color: #d67093; color: #2e0a18" title="Region 8">8</button>
+                        <button onclick="setTool('region9')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region9" style="background-color: #36a9c5; color: #051a22" title="Region 9">9</button>
+                    </div>
                 </div>
             </div>
 
@@ -142,9 +164,14 @@
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold text-slate-400">Raw JSON Game Config</label>
                     <textarea id="jsonConfigText" class="code-font bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-indigo-300 h-24 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
-                    <button onclick="loadCustomJSON()" class="bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/80 text-indigo-300 hover:text-indigo-200 transition-all text-xs font-bold py-2 rounded-xl">
-                        <i class="fa-solid fa-upload mr-1"></i> Apply & Compile JSON Config
-                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="loadCustomJSON()" class="bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/80 text-indigo-300 hover:text-indigo-200 transition-all text-xs font-bold py-2 rounded-xl">
+                            <i class="fa-solid fa-upload mr-1"></i> Load JSON
+                        </button>
+                        <button onclick="exportJSON()" class="bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/80 text-emerald-300 hover:text-emerald-200 transition-all text-xs font-bold py-2 rounded-xl">
+                            <i class="fa-solid fa-download mr-1"></i> Export JSON
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -214,6 +241,34 @@
         let regions = [];
         let grid = []; // 0 = empty, 1 = cat, 2 = blocked
         let historyStack = []; // stores snapshotted states for backtracking step simulation
+        let currentTool = 'none';
+
+        const TOOL_LABELS = {
+            none: '🔍 Inspect',
+            cat: '🐱 Cat',
+            block: '❌ Block',
+            region0: '🎨 Region 0',
+            region1: '🎨 Region 1',
+            region2: '🎨 Region 2',
+            region3: '🎨 Region 3',
+            region4: '🎨 Region 4',
+            region5: '🎨 Region 5',
+            region6: '🎨 Region 6',
+            region7: '🎨 Region 7',
+            region8: '🎨 Region 8',
+            region9: '🎨 Region 9'
+        };
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tool === tool) {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('activeToolLabel').textContent = TOOL_LABELS[tool] || tool;
+        }
 
         // Initialize state
         function init(config) {
@@ -267,10 +322,10 @@
 
         // Logic routing for cell interactions
         function handleCellClick(r, c) {
-            const editVal = document.getElementById('editMode').value;
+            const editVal = currentTool;
             if (editVal === 'none') {
                 const regId = regions[r][c];
-                logMessage(`Inspect: Cell R${r+1}C${c+1} belongs to Region ID: ${regId}.`, 'slate-400');
+                logMessage(`Inspect: Cell R${r+1}C${c+1} belongs to Region ID: ${regId}.`, 'text-slate-400');
                 return;
             }
 
@@ -324,6 +379,30 @@
                 alert("Invalid JSON structure! Check format: \n" + err.message);
                 logMessage(`[ERROR] JSON load failed: ${err.message}`, "text-rose-500");
             }
+        }
+
+        function exportJSON() {
+            const cats = [];
+            const blocked = [];
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) cats.push([r, c]);
+                    if (grid[r][c] === 2) blocked.push([r, c]);
+                }
+            }
+            const config = {
+                size: currentSize,
+                regions: regions,
+                cats: cats,
+                blocked: blocked
+            };
+            const json = JSON.stringify(config, null, 2);
+            document.getElementById('jsonConfigText').value = json;
+            navigator.clipboard.writeText(json).then(() => {
+                logMessage("[SYSTEM] JSON exported to clipboard & text area.", "text-emerald-400");
+            }).catch(() => {
+                logMessage("[SYSTEM] JSON exported to text area (clipboard unavailable).", "text-amber-400");
+            });
         }
 
         // Deep copy of game state array
