@@ -212,7 +212,7 @@
 
     <!-- Footer -->
     <footer class="w-full max-w-6xl mt-6 text-center text-xs text-slate-600 border-t border-slate-900 pt-4 flex flex-col md:flex-row justify-between gap-2">
-        <span>Deterministic Rule System: Exclusions &gt; Singletons &gt; Intersection &gt; Smothering/Adjacency Trap</span>
+        <span>Deterministic Rule System: Exclusions &gt; Singletons &gt; Intersection &gt; Reverse Intersection &gt; Adjacency Trap</span>
         <span>Made with 🐱 in Hong Kong</span>
     </footer>
 
@@ -602,6 +602,67 @@
             return false;
         }
 
+        // If all open cells in a row/col belong to one region, block that region outside the row/col
+        function runReverseIntersection() {
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            // 1. Scan Rows
+            for (let r = 0; r < currentSize; r++) {
+                let hasCat = false;
+                let openCells = [];
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openCells.push({r, c});
+                }
+                if (hasCat || openCells.length < 2) continue;
+
+                const regionIds = [...new Set(openCells.map(c => regions[c.r][c.c]))];
+                if (regionIds.length === 1) {
+                    const rId = regionIds[0];
+                    let blockedSomething = false;
+                    for (let x = 0; x < currentSize; x++) {
+                        for (let y = 0; y < currentSize; y++) {
+                            if (regions[x][y] === rId && grid[x][y] === 0 && x !== r) {
+                                grid[x][y] = 2;
+                                blockedSomething = true;
+                                logMessage(`[RULE: REVERSE INTERSECTION] Blocked R${x+1}C${y+1} (Row ${r+1} open cells all in Region ${rId}).`, 'text-amber-500');
+                            }
+                        }
+                    }
+                    if (blockedSomething) return true;
+                }
+            }
+
+            // 2. Scan Columns
+            for (let c = 0; c < currentSize; c++) {
+                let hasCat = false;
+                let openCells = [];
+                for (let r = 0; r < currentSize; r++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openCells.push({r, c});
+                }
+                if (hasCat || openCells.length < 2) continue;
+
+                const regionIds = [...new Set(openCells.map(c => regions[c.r][c.c]))];
+                if (regionIds.length === 1) {
+                    const rId = regionIds[0];
+                    let blockedSomething = false;
+                    for (let x = 0; x < currentSize; x++) {
+                        for (let y = 0; y < currentSize; y++) {
+                            if (regions[x][y] === rId && grid[x][y] === 0 && y !== c) {
+                                grid[x][y] = 2;
+                                blockedSomething = true;
+                                logMessage(`[RULE: REVERSE INTERSECTION] Blocked R${x+1}C${y+1} (Col ${c+1} open cells all in Region ${rId}).`, 'text-amber-500');
+                            }
+                        }
+                    }
+                    if (blockedSomething) return true;
+                }
+            }
+
+            return false;
+        }
+
         // Checks if playing a cat in a cell leaves a neighbor region with zero valid cells
         function runAdjacencyTrap() {
             const uniqueRegions = [...new Set(regions.flat())];
@@ -805,6 +866,7 @@
             if (applyExclusions()) { trackChanges(); renderGrid(); return true; }
             if (runSingletons()) { trackChanges(); renderGrid(); return true; }
             if (runIntersection()) { trackChanges(); renderGrid(); return true; }
+            if (runReverseIntersection()) { trackChanges(); renderGrid(); return true; }
             if (runAdjacencyTrap()) { trackChanges(); renderGrid(); return true; }
 
             // Check if solved
