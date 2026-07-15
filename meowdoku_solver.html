@@ -49,6 +49,14 @@
             outline-offset: 2px;
             transform: scale(1.1);
         }
+        /* Highlight for cells updated in last step */
+        .cell-updated {
+            animation: cell-pulse 1.2s ease-out;
+        }
+        @keyframes cell-pulse {
+            0% { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.9); }
+            100% { box-shadow: 0 0 0 0px rgba(99, 102, 241, 0); }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-between p-4 md:p-8">
@@ -143,13 +151,19 @@
                 </h3>
                 
                 <!-- Action Buttons -->
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="solveBack()" class="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 transition-all text-slate-200 font-semibold py-3 px-4 rounded-xl shadow-lg active:scale-95 text-sm">
+                        <i class="fa-solid fa-angles-left"></i> Back
+                    </button>
                     <button onclick="solveNextStep()" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-all text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 text-sm">
                         <i class="fa-solid fa-angles-right"></i> Solve Step
                     </button>
                     <button onclick="solveInstantly()" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 transition-all text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 text-sm">
                         <i class="fa-solid fa-bolt"></i> Solve Instant
                     </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
                     <button onclick="resetBoard()" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 transition-all text-slate-300 font-semibold py-2.5 px-4 rounded-xl border border-slate-700 active:scale-95 text-xs">
                         <i class="fa-solid fa-arrow-rotate-left"></i> Reset Board
                     </button>
@@ -241,6 +255,8 @@
         let regions = [];
         let grid = []; // 0 = empty, 1 = cat, 2 = blocked
         let historyStack = []; // stores snapshotted states for backtracking step simulation
+        let stepHistory = []; // full grid snapshots for back button
+        let lastUpdatedCells = []; // cells changed in the most recent step [{r, c, val}]
         let currentTool = 'none';
 
         const TOOL_LABELS = {
@@ -296,6 +312,8 @@
             container.innerHTML = '';
             container.style.gridTemplateColumns = `repeat(${currentSize}, minmax(0, 1fr))`;
 
+            const updatedSet = new Set(lastUpdatedCells.map(c => `${c.r},${c.c}`));
+
             for (let r = 0; r < currentSize; r++) {
                 for (let c = 0; c < currentSize; c++) {
                     const cell = document.createElement('div');
@@ -311,6 +329,11 @@
                         cell.classList.add('animate-bounce');
                     } else if (grid[r][c] === 2) {
                         cell.innerHTML = '<span class="text-slate-800/80 font-black text-sm">❌</span>';
+                    }
+
+                    // Highlight cells updated in last step
+                    if (updatedSet.has(`${r},${c}`)) {
+                        cell.classList.add('cell-updated');
                     }
 
                     // Click handler to allow manual painting/custom setup
@@ -356,12 +379,16 @@
 
         function clearBoard() {
             grid = Array.from({ length: currentSize }, () => Array(currentSize).fill(0));
+            stepHistory = [];
+            lastUpdatedCells = [];
             renderGrid();
             logMessage("[SYSTEM] Grid states cleared. (Region assignments retained).", "text-rose-400");
         }
 
         function resetBoard() {
             init(DEFAULT_CONFIG);
+            stepHistory = [];
+            lastUpdatedCells = [];
             clearLogs();
             logMessage("[SYSTEM] Puzzle reset to original 10x10 screenshot state.", "text-indigo-400");
         }
@@ -752,6 +779,10 @@
 
         // Main orchestrator to drive logic steps
         function solveNextStep() {
+            // Save snapshot for back button
+            stepHistory.push(copyMatrix(grid));
+            lastUpdatedCells = [];
+
             // First, test for contradictions and trigger backtracking rollbacks if we've hit a dead-end
             if (checkContradictions()) {
                 if (historyStack.length > 0) {
@@ -759,36 +790,63 @@
                     grid = snap.grid;
                     // Since placing a cat failed, that target cell MUST be blocked
                     grid[snap.cell.r][snap.cell.c] = 2;
+                    lastUpdatedCells = [{r: snap.cell.r, c: snap.cell.c}];
                     logMessage(`[BACKTRACK ROLLBACK] Confirmed contradiction. Reverting and blocking R${snap.cell.r+1}C${snap.cell.c+1}.`, 'text-rose-400 font-bold');
                     renderGrid();
                     return true;
                 } else {
+                    stepHistory.pop(); // no change, remove snapshot
                     logMessage("[ERROR] Puzzle state contains unresolvable contradictions! Check configuration details.", 'text-rose-500 font-black');
                     return false;
                 }
             }
 
             // Execute deterministic checks hierarchically
-            if (applyExclusions()) { renderGrid(); return true; }
-            if (runSingletons()) { renderGrid(); return true; }
-            if (runIntersection()) { renderGrid(); return true; }
-            if (runAdjacencyTrap()) { renderGrid(); return true; }
+            if (applyExclusions()) { trackChanges(); renderGrid(); return true; }
+            if (runSingletons()) { trackChanges(); renderGrid(); return true; }
+            if (runIntersection()) { trackChanges(); renderGrid(); return true; }
+            if (runAdjacencyTrap()) { trackChanges(); renderGrid(); return true; }
 
             // Check if solved
             const totalCats = grid.flat().filter(cell => cell === 1).length;
             if (totalCats === currentSize) {
+                stepHistory.pop(); // no change, remove snapshot
                 logMessage(`🎉 PUZZLE SOLVED! Successfully placed all ${currentSize} cats without errors.`, 'text-emerald-400 font-black text-sm');
                 return false;
             }
 
             // Try guess/backtrack branch since deterministic passes stalled
-            if (runBacktrackGuess()) {
-                renderGrid();
-                return true;
-            }
+            if (runBacktrackGuess()) { trackChanges(); renderGrid(); return true; }
 
+            stepHistory.pop(); // no change, remove snapshot
             logMessage("[SYSTEM] No logical moves remaining. If puzzle is unsolved, it may have multiple answers or conflicts.", 'text-amber-500');
             return false;
+        }
+
+        // Compare current grid to last snapshot to find changed cells
+        function trackChanges() {
+            if (stepHistory.length === 0) return;
+            const prev = stepHistory[stepHistory.length - 1];
+            lastUpdatedCells = [];
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] !== prev[r][c]) {
+                        lastUpdatedCells.push({r, c});
+                    }
+                }
+            }
+        }
+
+        // Undo last solve step
+        function solveBack() {
+            if (stepHistory.length === 0) {
+                logMessage("[SYSTEM] Nothing to undo.", "text-amber-400");
+                return;
+            }
+            grid = stepHistory.pop();
+            lastUpdatedCells = [];
+            renderGrid();
+            logMessage("[SYSTEM] Reverted to previous step.", "text-indigo-400");
         }
 
         // Instantly solve by looping the logical step engine
