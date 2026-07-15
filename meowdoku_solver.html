@@ -398,11 +398,15 @@
             };
             const json = JSON.stringify(config, null, 2);
             document.getElementById('jsonConfigText').value = json;
-            navigator.clipboard.writeText(json).then(() => {
-                logMessage("[SYSTEM] JSON exported to clipboard & text area.", "text-emerald-400");
-            }).catch(() => {
-                logMessage("[SYSTEM] JSON exported to text area (clipboard unavailable).", "text-amber-400");
-            });
+            try {
+                navigator.clipboard.writeText(json).then(() => {
+                    logMessage("[SYSTEM] JSON exported to clipboard & text area.", "text-emerald-400");
+                }).catch(() => {
+                    logMessage("[SYSTEM] JSON exported to text area (clipboard write failed).", "text-amber-400");
+                });
+            } catch (e) {
+                logMessage("[SYSTEM] JSON exported to text area (clipboard API unavailable).", "text-amber-400");
+            }
         }
 
         // Deep copy of game state array
