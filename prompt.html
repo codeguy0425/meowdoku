@@ -29,25 +29,26 @@ RULES OF MEOWDUKU:
 
 TASK:
 1. Count the grid size (rows × columns)
-2. Identify all distinct colored regions and assign each a numeric ID (0, 1, 2, ...)
+2. Identify all distinct colored regions and label each with its color name
 3. Find all pre-placed cats (usually shown as 🐱 or cat icons)
 4. Find all pre-placed blocked/X cells (usually shown as ❌ or X marks)
 
 OUTPUT FORMAT (JSON only, no explanation):
 {
-  "size": number,
-  "regions": [
-    [row0_col0_regionID, row0_col1_regionID, ...],
-    [row1_col0_regionID, row1_col1_regionID, ...]
+  "grid": [
+    ["color_name", "color_name", ...],
+    ["color_name", "color_name", ...]
   ],
   "cats": [[row, col], ...],
   "blocked": [[row, col], ...]
 }
 
 IMPORTANT:
+- Use lowercase color names (e.g. "orange", "light_green", "pink_1", "brown")
+- If two regions share the same color, add a suffix like "pink_1", "pink_2"
 - Rows and columns are 0-indexed (start from 0)
-- Each region gets a unique number
 - cats and blocked are arrays of [row, col] coordinates
+- If no cats or blocked cells are visible, use empty arrays []
 - Output ONLY the JSON, no other text</textarea>
                 <button onclick="copyPrompt()" id="copyBtn" class="absolute top-3 right-3 bg-indigo-600 hover:bg-indigo-500 transition-all text-white text-xs font-bold py-1.5 px-3 rounded-lg">
                     <i class="fa-regular fa-copy mr-1"></i> Copy
