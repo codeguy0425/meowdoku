@@ -1,98 +1,1003 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meowdoku Solver</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meowdoku Logic-First Solver Dashboard</title>
+    <!-- Tailwind CSS for high-end aesthetic layout styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Space+Grotesk:wght@400;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        h1, h2, h3 {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom scrollbar for terminal log */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Active tool button */
+        .tool-btn.active {
+            outline: 2px solid #818cf8;
+            outline-offset: 1px;
+            background-color: #312e81;
+        }
+        .tool-btn.region-swatch.active {
+            outline: 2px solid #ffffff;
+            outline-offset: 2px;
+            transform: scale(1.1);
+        }
+        /* Highlight for cells updated in last step */
+        .cell-updated {
+            animation: cell-pulse 1.2s ease-out;
+        }
+        @keyframes cell-pulse {
+            0% { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.9); }
+            100% { box-shadow: 0 0 0 0px rgba(99, 102, 241, 0); }
+        }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col items-center justify-between p-4 md:p-8">
 
-<header>
-  <h1>Meow<span>doku</span> Solver</h1>
-  <div class="toolbar">
-    <label>Rows</label>
-    <input type="number" id="gridRows" value="6" min="3" max="20">
-    <label>Cols</label>
-    <input type="number" id="gridCols" value="6" min="3" max="20">
-    <button onclick="Editor.resize()">Resize</button>
-  </div>
-  <div class="toolbar mode-btns" id="editModeBtns">
-    <button class="active" data-mode="region" onclick="Editor.setMode('region')">Region</button>
-    <button data-mode="cat" onclick="Editor.setMode('cat')">Cat</button>
-    <button data-mode="x" onclick="Editor.setMode('x')">X</button>
-    <button data-mode="erase" onclick="Editor.setMode('erase')">Erase</button>
-  </div>
-  <div class="region-palette" id="regionPalette"></div>
-  <div class="toolbar">
-    <button onclick="Editor.showImport()">Import</button>
-    <button onclick="Editor.showExport()">Export</button>
-    <button class="green" onclick="Solve.run()">Solve</button>
-    <button onclick="GenerateAndLoad()" style="background:var(--accent);color:#fff;border-color:var(--accent)">Generate</button>
-    <button onclick="Editor.clear()">Clear</button>
-  </div>
-</header>
+    <!-- Top Navigation Header -->
+    <header class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20 text-3xl">
+                🐱
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
+                    Meowdoku <span class="text-indigo-400">Logic-First Solver</span>
+                </h1>
+                <p class="text-sm text-slate-400">Step-by-step constraint satisfaction and recursive solver</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700/50">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-semibold tracking-wider uppercase text-slate-300">Level loaded: Screenshot 10x10</span>
+        </div>
+    </header>
 
-<div class="main">
-  <div class="panel editor-panel">
-    <div id="gridWrapper"></div>
-    <div class="legend" id="legendArea"></div>
-  </div>
-  <div class="panel solver-panel">
-    <div class="empty-state" id="emptyState">
-      <h2>Setup your puzzle, then hit Solve</h2>
-      <p>Paint regions, place cats/X marks, then click <strong>Solve</strong> to see step-by-step reasoning.</p>
-      <div class="example-btns">
-        <button onclick="Examples.load(5)">5x5 Example</button>
-        <button onclick="Examples.load(6)">6x6 Example</button>
-        <button onclick="Examples.load(7)">7x7 Example</button>
-      </div>
-    </div>
-    <div id="solverContent" style="display:none;flex:1;display:flex;flex-direction:column">
-      <div class="playback-bar">
-        <button id="btnFirst" onclick="Playback.first()" title="First">&#9198;</button>
-        <button id="btnPrev" onclick="Playback.prev()" title="Prev">&#9664;</button>
-        <button id="btnPlay" onclick="Playback.toggle()" title="Play">&#9654;</button>
-        <button id="btnNext" onclick="Playback.next()" title="Next">&#9654;</button>
-        <button id="btnLast" onclick="Playback.last()" title="Last">&#9197;</button>
-        <span class="step-counter" id="stepCounter">0 / 0</span>
-        <label style="font-size:.75rem;color:var(--muted)">Speed</label>
-        <input type="range" class="speed-slider" id="speedSlider" min="1" max="10" value="5">
-      </div>
-      <div class="step-list" id="stepList"></div>
-    </div>
-  </div>
-</div>
+    <!-- Main Workspace -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start flex-grow">
+        
+        <!-- Left Side: Interactive Board -->
+        <div class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col items-center">
+            
+            <!-- Dashboard Toolbar -->
+            <div class="w-full flex flex-col gap-3 mb-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Active Game Grid</span>
+                    <span id="activeToolLabel" class="text-xs text-indigo-400 font-semibold">🔍 Inspect</span>
+                </div>
+                <!-- Tool buttons -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="setTool('none')" class="tool-btn active flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="none">
+                        <span>🔍</span> Inspect
+                    </button>
+                    <button onclick="setTool('cat')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="cat">
+                        <span>🐱</span> Cat
+                    </button>
+                    <button onclick="setTool('block')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="block">
+                        <span>❌</span> Block
+                    </button>
+                    <div class="w-px h-6 bg-slate-700 mx-1"></div>
+                    <!-- Region color swatches -->
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="setTool('region0')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region0" style="background-color: #a2e082; color: #1a2e05" title="Region 0">0</button>
+                        <button onclick="setTool('region1')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region1" style="background-color: #2d8a4e; color: #ffffff" title="Region 1">1</button>
+                        <button onclick="setTool('region2')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region2" style="background-color: #f199e8; color: #2e0a28" title="Region 2">2</button>
+                        <button onclick="setTool('region3')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region3" style="background-color: #8b7feb; color: #1a1833" title="Region 3">3</button>
+                        <button onclick="setTool('region4')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region4" style="background-color: #d9a406; color: #2e2300" title="Region 4">4</button>
+                        <button onclick="setTool('region5')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region5" style="background-color: #a7cdf2; color: #0a1a2e" title="Region 5">5</button>
+                        <button onclick="setTool('region6')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region6" style="background-color: #fce18a; color: #2e2a05" title="Region 6">6</button>
+                        <button onclick="setTool('region7')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region7" style="background-color: #ab754f; color: #ffffff" title="Region 7">7</button>
+                        <button onclick="setTool('region8')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region8" style="background-color: #d67093; color: #2e0a18" title="Region 8">8</button>
+                        <button onclick="setTool('region9')" class="tool-btn region-swatch flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="region9" style="background-color: #36a9c5; color: #051a22" title="Region 9">9</button>
+                    </div>
+                </div>
+            </div>
 
-<div class="status-bar">
-  <span id="statusText">Ready</span>
-  <span id="statusInfo"></span>
-</div>
+            <!-- Meowdoku Grid Container -->
+            <div id="grid-container" class="grid gap-1 bg-slate-950 p-3 rounded-xl border-2 border-slate-800 shadow-inner w-full max-w-lg aspect-square">
+                <!-- Javascript will inject grid cells here dynamically -->
+            </div>
 
-<div class="import-modal" id="importModal">
-  <div class="modal-content">
-    <h3 id="modalTitle" style="margin-bottom:12px;font-size:1rem">Import</h3>
-    <textarea id="modalTextarea" spellcheck="false"></textarea>
-    <div class="modal-btns">
-      <button onclick="Editor.closeModal()">Cancel</button>
-      <button id="modalAction" onclick="Editor.modalAction()" style="background:var(--accent);color:#fff;border-color:var(--accent)">Import</button>
-    </div>
-  </div>
-</div>
+            <!-- Palette Legend & Info -->
+            <div class="w-full grid grid-cols-5 md:grid-cols-10 gap-2 mt-4 text-[10px] text-center font-semibold text-slate-400">
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #a2e082"></div><span>Reg 0</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #2d8a4e"></div><span>Reg 1</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #f199e8"></div><span>Reg 2</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #8b7feb"></div><span>Reg 3</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #d9a406"></div><span>Reg 4</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #a7cdf2"></div><span>Reg 5</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #fce18a"></div><span>Reg 6</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #ab754f"></div><span>Reg 7</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #d67093"></div><span>Reg 8</span></div>
+                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #36a9c5"></div><span>Reg 9</span></div>
+            </div>
 
-<div class="complete-overlay" id="completeModal">
-  <div class="complete-card">
-    <div class="trophy">&#127942;</div>
-    <h3>Puzzle Solved!</h3>
-    <p id="completeMsg"></p>
-    <button onclick="Playback.dismissComplete()">OK</button>
-  </div>
-</div>
+        </div>
 
-<script src="examples.js"></script>
-<script src="generator.js"></script>
-<script src="solver.js"></script>
-<script src="playback.js"></script>
-<script src="editor.js"></script>
+        <!-- Right Side: Control Panel & Live Logs -->
+        <div class="lg:col-span-5 flex flex-col gap-6 h-full">
+            
+            <!-- Solve & Configuration Controls -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-gears text-indigo-500"></i> Engine Controller
+                </h3>
+                
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="solveBack()" class="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 transition-all text-slate-200 font-semibold py-3 px-4 rounded-xl shadow-lg active:scale-95 text-sm">
+                        <i class="fa-solid fa-angles-left"></i> Back
+                    </button>
+                    <button onclick="solveNextStep()" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-all text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 text-sm">
+                        <i class="fa-solid fa-angles-right"></i> Solve Step
+                    </button>
+                    <button onclick="solveInstantly()" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 transition-all text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 text-sm">
+                        <i class="fa-solid fa-bolt"></i> Solve Instant
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="resetBoard()" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 transition-all text-slate-300 font-semibold py-2.5 px-4 rounded-xl border border-slate-700 active:scale-95 text-xs">
+                        <i class="fa-solid fa-arrow-rotate-left"></i> Reset Board
+                    </button>
+                    <button onclick="clearBoard()" class="flex items-center justify-center gap-2 bg-rose-950/40 hover:bg-rose-900/60 transition-all text-rose-300 font-semibold py-2.5 px-4 rounded-xl border border-rose-900/50 active:scale-95 text-xs">
+                        <i class="fa-solid fa-trash-can"></i> Clear Grid
+                    </button>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- JSON Config Paste & Load -->
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold text-slate-400">Raw JSON Game Config</label>
+                    <textarea id="jsonConfigText" class="code-font bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-indigo-300 h-24 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="loadCustomJSON()" class="bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/80 text-indigo-300 hover:text-indigo-200 transition-all text-xs font-bold py-2 rounded-xl">
+                            <i class="fa-solid fa-upload mr-1"></i> Load JSON
+                        </button>
+                        <button onclick="exportJSON()" class="bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/80 text-emerald-300 hover:text-emerald-200 transition-all text-xs font-bold py-2 rounded-xl">
+                            <i class="fa-solid fa-download mr-1"></i> Export JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal-style Live Logical Engine Log -->
+            <div class="bg-slate-950/90 border border-slate-900 rounded-2xl shadow-2xl flex-grow flex flex-col h-72 lg:h-96">
+                <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 rounded-t-2xl flex justify-between items-center">
+                    <span class="text-xs font-bold text-indigo-400 code-font flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping"></span>
+                        LOGIC_STREAM_LOGGER
+                    </span>
+                    <button onclick="clearLogs()" class="text-[10px] text-slate-500 hover:text-slate-300 transition-all font-semibold uppercase tracking-wider">
+                        Clear Logs
+                    </button>
+                </div>
+                <div id="log-terminal" class="p-4 overflow-y-auto flex flex-col gap-1.5 code-font text-xs flex-grow">
+                    <span class="text-slate-500">[SYSTEM] Initialization completed. Board loaded from "Screenshot_20260716_062544_Meowdoku.jpg".</span>
+                    <span class="text-emerald-400/90">[LOGIC] Row 1 Column 6 is a Singleton (Region 4 has only 1 tile). Expect logical cascade there!</span>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-6xl mt-6 text-center text-xs text-slate-600 border-t border-slate-900 pt-4 flex flex-col md:flex-row justify-between gap-2">
+        <span>Deterministic Rule System: Exclusions &gt; Singletons &gt; Intersection &gt; Reverse Intersection &gt; Adjacency Trap</span>
+        <span>Made with 🐱 in Hong Kong</span>
+    </footer>
+
+    <!-- Main Solver Implementation Script -->
+    <script>
+        // 10x10 Game configuration parsed verbatim from Screenshot_20260716_062544_Meowdoku.jpg
+        const DEFAULT_CONFIG = {
+            size: 10,
+            regions: [
+                [0, 0, 1, 1, 1, 1, 1, 2, 2, 2],
+                [0, 1, 1, 3, 1, 4, 1, 2, 2, 2],
+                [0, 1, 5, 3, 3, 1, 1, 2, 7, 2],
+                [0, 0, 5, 5, 3, 6, 6, 2, 7, 7],
+                [8, 0, 0, 5, 3, 5, 5, 2, 2, 7],
+                [8, 8, 0, 5, 5, 5, 5, 5, 7, 7],
+                [8, 8, 0, 5, 7, 7, 7, 7, 7, 9],
+                [8, 0, 0, 0, 0, 0, 9, 9, 9, 9],
+                [8, 0, 9, 9, 9, 9, 9, 9, 8, 9],
+                [8, 8, 8, 8, 8, 8, 8, 8, 9, 9]
+            ],
+            cats: [],
+            blocked: []
+        };
+
+        // UI color mapping matching the exact game visual cues
+        const REGION_COLORS = {
+            0: "#a2e082", // Light Green
+            1: "#2d8a4e", // Dark Green
+            2: "#f199e8", // Pink
+            3: "#8b7feb", // Purple
+            4: "#d9a406", // Mustard
+            5: "#a7cdf2", // Light Blue
+            6: "#fce18a", // Light Yellow
+            7: "#ab754f", // Brown
+            8: "#d67093", // Rose Pink
+            9: "#36a9c5"  // Teal/Cyan
+        };
+
+        let currentSize = 10;
+        let regions = [];
+        let grid = []; // 0 = empty, 1 = cat, 2 = blocked
+        let historyStack = []; // stores snapshotted states for backtracking step simulation
+        let stepHistory = []; // full grid snapshots for back button
+        let lastUpdatedCells = []; // cells changed in the most recent step [{r, c, val}]
+        let currentTool = 'none';
+
+        const TOOL_LABELS = {
+            none: '🔍 Inspect',
+            cat: '🐱 Cat',
+            block: '❌ Block',
+            region0: '🎨 Region 0',
+            region1: '🎨 Region 1',
+            region2: '🎨 Region 2',
+            region3: '🎨 Region 3',
+            region4: '🎨 Region 4',
+            region5: '🎨 Region 5',
+            region6: '🎨 Region 6',
+            region7: '🎨 Region 7',
+            region8: '🎨 Region 8',
+            region9: '🎨 Region 9'
+        };
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tool === tool) {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('activeToolLabel').textContent = TOOL_LABELS[tool] || tool;
+        }
+
+        // Initialize state
+        function init(config) {
+            currentSize = config.size;
+            regions = JSON.parse(JSON.stringify(config.regions));
+            grid = Array.from({ length: currentSize }, () => Array(currentSize).fill(0));
+            historyStack = [];
+
+            // Apply pre-placed items
+            if (config.cats) {
+                config.cats.forEach(([r, c]) => grid[r][c] = 1);
+            }
+            if (config.blocked) {
+                config.blocked.forEach(([r, c]) => grid[r][c] = 2);
+            }
+
+            // Sync visual text box
+            document.getElementById('jsonConfigText').value = JSON.stringify(config, null, 2);
+            renderGrid();
+        }
+
+        // Display current state on board UI
+        function renderGrid() {
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${currentSize}, minmax(0, 1fr))`;
+
+            const updatedSet = new Set(lastUpdatedCells.map(c => `${c.r},${c.c}`));
+
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'relative flex items-center justify-center font-bold text-lg select-none cursor-pointer transition-all duration-150 border border-slate-950/20 rounded-md';
+                    
+                    // Region background styling
+                    const regionId = regions[r][c];
+                    cell.style.backgroundColor = REGION_COLORS[regionId] || '#475569';
+
+                    // Mark cats/blocks icons
+                    if (grid[r][c] === 1) {
+                        cell.innerHTML = '🐱';
+                        cell.classList.add('animate-bounce');
+                    } else if (grid[r][c] === 2) {
+                        cell.innerHTML = '<span class="text-slate-800/80 font-black text-sm">❌</span>';
+                    }
+
+                    // Highlight cells updated in last step
+                    if (updatedSet.has(`${r},${c}`)) {
+                        cell.classList.add('cell-updated');
+                    }
+
+                    // Click handler to allow manual painting/custom setup
+                    cell.onclick = () => handleCellClick(r, c);
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        // Logic routing for cell interactions
+        function handleCellClick(r, c) {
+            const editVal = currentTool;
+            if (editVal === 'none') {
+                const regId = regions[r][c];
+                logMessage(`Inspect: Cell R${r+1}C${c+1} belongs to Region ID: ${regId}.`, 'text-slate-400');
+                return;
+            }
+
+            if (editVal === 'cat') {
+                grid[r][c] = grid[r][c] === 1 ? 0 : 1;
+            } else if (editVal === 'block') {
+                grid[r][c] = grid[r][c] === 2 ? 0 : 2;
+            } else if (editVal.startsWith('region')) {
+                const parsedId = parseInt(editVal.replace('region', ''), 10);
+                regions[r][c] = parsedId;
+            }
+            renderGrid();
+        }
+
+        // Log messages to diagnostic log terminal window
+        function logMessage(text, colorClass = 'text-slate-300') {
+            const terminal = document.getElementById('log-terminal');
+            const entry = document.createElement('span');
+            entry.className = `leading-relaxed ${colorClass}`;
+            entry.innerText = text;
+            terminal.appendChild(entry);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('log-terminal').innerHTML = '<span class="text-slate-500">[SYSTEM] Logger cleared.</span>';
+        }
+
+        function clearBoard() {
+            grid = Array.from({ length: currentSize }, () => Array(currentSize).fill(0));
+            stepHistory = [];
+            lastUpdatedCells = [];
+            renderGrid();
+            logMessage("[SYSTEM] Grid states cleared. (Region assignments retained).", "text-rose-400");
+        }
+
+        function resetBoard() {
+            init(DEFAULT_CONFIG);
+            stepHistory = [];
+            lastUpdatedCells = [];
+            clearLogs();
+            logMessage("[SYSTEM] Puzzle reset to original 10x10 screenshot state.", "text-indigo-400");
+        }
+
+        function loadCustomJSON() {
+            try {
+                const val = document.getElementById('jsonConfigText').value;
+                const parsed = JSON.parse(val);
+                if (!parsed.size || !parsed.regions) {
+                    throw new Error("Missing size or regions elements.");
+                }
+                init(parsed);
+                logMessage("[SYSTEM] Loaded custom JSON map successfully.", "text-emerald-400");
+            } catch (err) {
+                alert("Invalid JSON structure! Check format: \n" + err.message);
+                logMessage(`[ERROR] JSON load failed: ${err.message}`, "text-rose-500");
+            }
+        }
+
+        function exportJSON() {
+            const cats = [];
+            const blocked = [];
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) cats.push([r, c]);
+                    if (grid[r][c] === 2) blocked.push([r, c]);
+                }
+            }
+            const config = {
+                size: currentSize,
+                regions: regions,
+                cats: cats,
+                blocked: blocked
+            };
+            const json = JSON.stringify(config, null, 2);
+            document.getElementById('jsonConfigText').value = json;
+            try {
+                navigator.clipboard.writeText(json).then(() => {
+                    logMessage("[SYSTEM] JSON exported to clipboard & text area.", "text-emerald-400");
+                }).catch(() => {
+                    logMessage("[SYSTEM] JSON exported to text area (clipboard write failed).", "text-amber-400");
+                });
+            } catch (e) {
+                logMessage("[SYSTEM] JSON exported to text area (clipboard API unavailable).", "text-amber-400");
+            }
+        }
+
+        // Deep copy of game state array
+        function copyMatrix(mat) {
+            return mat.map(row => [...row]);
+        }
+
+        // ==========================================
+        //  THE CORE LOGIC-FIRST SOLVING MECHANISM
+        // ==========================================
+
+        // Applies baseline constraints from placed cats
+        function applyExclusions() {
+            let changed = false;
+
+            // Iterate over all cells
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) { // We have a Cat
+                        // 1. Block out row & col
+                        for (let i = 0; i < currentSize; i++) {
+                            if (grid[r][i] === 0) { grid[r][i] = 2; changed = true; logMessage(`[RULE: EXCLUSION] Blocked R${r+1}C${i+1} due to Cat in same row.`, 'text-cyan-500'); }
+                            if (grid[i][c] === 0) { grid[i][c] = 2; changed = true; logMessage(`[RULE: EXCLUSION] Blocked R${i+1}C${c+1} due to Cat in same column.`, 'text-cyan-500'); }
+                        }
+                        // 2. Block region
+                        const myRegion = regions[r][c];
+                        for (let x = 0; x < currentSize; x++) {
+                            for (let y = 0; y < currentSize; y++) {
+                                if (regions[x][y] === myRegion && grid[x][y] === 0) {
+                                    grid[x][y] = 2;
+                                    changed = true;
+                                    logMessage(`[RULE: EXCLUSION] Blocked R${x+1}C${y+1} (same region as R${r+1}C${c+1}).`, 'text-cyan-500');
+                                }
+                            }
+                        }
+                        // 3. Block 8 adjacent neighbors
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                const nr = r + dr, nc = c + dc;
+                                if (nr >= 0 && nr < currentSize && nc >= 0 && nc < currentSize) {
+                                    if (grid[nr][nc] === 0) {
+                                        grid[nr][nc] = 2;
+                                        changed = true;
+                                        logMessage(`[RULE: EXCLUSION] Blocked R${nr+1}C${nc+1} (adjacent neighbor to R${r+1}C${c+1}).`, 'text-cyan-500');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return changed;
+        }
+
+        // Resolves rows, columns, or regions that only have exactly 1 slot left
+        function runSingletons() {
+            // Find unique regions present in this configuration
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            // 1. Scan regions
+            for (const rId of uniqueRegions) {
+                // If this region already contains a cat, skip it
+                let hasCat = false;
+                let openSlots = [];
+                for (let r = 0; r < currentSize; r++) {
+                    for (let c = 0; c < currentSize; c++) {
+                        if (regions[r][c] === rId) {
+                            if (grid[r][c] === 1) hasCat = true;
+                            if (grid[r][c] === 0) openSlots.push({r, c});
+                        }
+                    }
+                }
+                if (!hasCat && openSlots.length === 1) {
+                    const target = openSlots[0];
+                    grid[target.r][target.c] = 1;
+                    logMessage(`[RULE: SINGLETON] Cat placed at R${target.r+1}C${target.c+1} (Region ID ${rId} has only 1 slot left!).`, 'text-emerald-400 font-bold');
+                    return true;
+                }
+            }
+
+            // 2. Scan Rows
+            for (let r = 0; r < currentSize; r++) {
+                let hasCat = false;
+                let openSlots = [];
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openSlots.push(c);
+                }
+                if (!hasCat && openSlots.length === 1) {
+                    const c = openSlots[0];
+                    grid[r][c] = 1;
+                    logMessage(`[RULE: SINGLETON] Cat placed at R${r+1}C${c+1} (Row ${r+1} has only 1 slot left!).`, 'text-emerald-400 font-bold');
+                    return true;
+                }
+            }
+
+            // 3. Scan Columns
+            for (let c = 0; c < currentSize; c++) {
+                let hasCat = false;
+                let openSlots = [];
+                for (let r = 0; r < currentSize; r++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openSlots.push(r);
+                }
+                if (!hasCat && openSlots.length === 1) {
+                    const r = openSlots[0];
+                    grid[r][c] = 1;
+                    logMessage(`[RULE: SINGLETON] Cat placed at R${r+1}C${c+1} (Column ${c+1} has only 1 slot left!).`, 'text-emerald-400 font-bold');
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Excludes options in rows or columns that overlap with a region's entire option pool
+        function runIntersection() {
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            for (const rId of uniqueRegions) {
+                let hasCat = false;
+                let openSlots = [];
+                for (let r = 0; r < currentSize; r++) {
+                    for (let c = 0; c < currentSize; c++) {
+                        if (regions[r][c] === rId) {
+                            if (grid[r][c] === 1) hasCat = true;
+                            if (grid[r][c] === 0) openSlots.push({r, c});
+                        }
+                    }
+                }
+
+                if (hasCat || openSlots.length < 2) continue;
+
+                // Check Row containment
+                const rows = [...new Set(openSlots.map(s => s.r))];
+                if (rows.length === 1) {
+                    const targetRow = rows[0];
+                    let blockedSomething = false;
+                    for (let c = 0; c < currentSize; c++) {
+                        if (grid[targetRow][c] === 0 && regions[targetRow][c] !== rId) {
+                            grid[targetRow][c] = 2;
+                            blockedSomething = true;
+                            logMessage(`[RULE: INTERSECTION] Blocked R${targetRow+1}C${c+1} (Row ${targetRow+1} cat must lie inside Region ${rId}).`, 'text-amber-500');
+                        }
+                    }
+                    if (blockedSomething) return true;
+                }
+
+                // Check Col containment
+                const cols = [...new Set(openSlots.map(s => s.col))];
+                const colsList = [...new Set(openSlots.map(s => s.c))];
+                if (colsList.length === 1) {
+                    const targetCol = colsList[0];
+                    let blockedSomething = false;
+                    for (let r = 0; r < currentSize; r++) {
+                        if (grid[r][targetCol] === 0 && regions[r][targetCol] !== rId) {
+                            grid[r][targetCol] = 2;
+                            blockedSomething = true;
+                            logMessage(`[RULE: INTERSECTION] Blocked R${r+1}C${targetCol+1} (Col ${targetCol+1} cat must lie inside Region ${rId}).`, 'text-amber-500');
+                        }
+                    }
+                    if (blockedSomething) return true;
+                }
+            }
+            return false;
+        }
+
+        // If all open cells in a row/col belong to one region, block that region outside the row/col
+        function runReverseIntersection() {
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            // 1. Scan Rows
+            for (let r = 0; r < currentSize; r++) {
+                let hasCat = false;
+                let openCells = [];
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openCells.push({r, c});
+                }
+                if (hasCat || openCells.length < 2) continue;
+
+                const regionIds = [...new Set(openCells.map(c => regions[c.r][c.c]))];
+                if (regionIds.length === 1) {
+                    const rId = regionIds[0];
+                    let blockedSomething = false;
+                    for (let x = 0; x < currentSize; x++) {
+                        for (let y = 0; y < currentSize; y++) {
+                            if (regions[x][y] === rId && grid[x][y] === 0 && x !== r) {
+                                grid[x][y] = 2;
+                                blockedSomething = true;
+                                logMessage(`[RULE: REVERSE INTERSECTION] Blocked R${x+1}C${y+1} (Row ${r+1} open cells all in Region ${rId}).`, 'text-amber-500');
+                            }
+                        }
+                    }
+                    if (blockedSomething) return true;
+                }
+            }
+
+            // 2. Scan Columns
+            for (let c = 0; c < currentSize; c++) {
+                let hasCat = false;
+                let openCells = [];
+                for (let r = 0; r < currentSize; r++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openCells.push({r, c});
+                }
+                if (hasCat || openCells.length < 2) continue;
+
+                const regionIds = [...new Set(openCells.map(c => regions[c.r][c.c]))];
+                if (regionIds.length === 1) {
+                    const rId = regionIds[0];
+                    let blockedSomething = false;
+                    for (let x = 0; x < currentSize; x++) {
+                        for (let y = 0; y < currentSize; y++) {
+                            if (regions[x][y] === rId && grid[x][y] === 0 && y !== c) {
+                                grid[x][y] = 2;
+                                blockedSomething = true;
+                                logMessage(`[RULE: REVERSE INTERSECTION] Blocked R${x+1}C${y+1} (Col ${c+1} open cells all in Region ${rId}).`, 'text-amber-500');
+                            }
+                        }
+                    }
+                    if (blockedSomething) return true;
+                }
+            }
+
+            return false;
+        }
+
+        // If N columns are fully confined to exactly N regions, block other regions in those columns (same for rows)
+        function runConfinedGroup() {
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            // Helper: check if a region's cells are all within given columns
+            function regionConfinedToCols(rId, colStart, colEnd) {
+                for (let r = 0; r < currentSize; r++)
+                    for (let c = 0; c < currentSize; c++)
+                        if (regions[r][c] === rId && (c < colStart || c > colEnd)) return false;
+                return true;
+            }
+
+            // Helper: check if a region's cells are all within given rows
+            function regionConfinedToRows(rId, rowStart, rowEnd) {
+                for (let r = 0; r < currentSize; r++)
+                    for (let c = 0; c < currentSize; c++)
+                        if (regions[r][c] === rId && (r < rowStart || r > rowEnd)) return false;
+                return true;
+            }
+
+            // 1. Scan contiguous column groups
+            for (let cStart = 0; cStart < currentSize; cStart++) {
+                for (let cEnd = cStart + 1; cEnd < currentSize; cEnd++) {
+                    const groupSize = cEnd - cStart + 1;
+                    const confined = uniqueRegions.filter(rId => regionConfinedToCols(rId, cStart, cEnd));
+                    if (confined.length === groupSize) {
+                        let blockedSomething = false;
+                        for (let r = 0; r < currentSize; r++) {
+                            for (let c = cStart; c <= cEnd; c++) {
+                                if (grid[r][c] === 0 && !confined.includes(regions[r][c])) {
+                                    grid[r][c] = 2;
+                                    blockedSomething = true;
+                                    logMessage(`[RULE: CONFINED GROUP] Blocked R${r+1}C${c+1} (Cols ${cStart+1}-${cEnd+1} confined to regions {${confined.join(',')}}).`, 'text-pink-400');
+                                }
+                            }
+                        }
+                        if (blockedSomething) return true;
+                    }
+                }
+            }
+
+            // 2. Scan contiguous row groups
+            for (let rStart = 0; rStart < currentSize; rStart++) {
+                for (let rEnd = rStart + 1; rEnd < currentSize; rEnd++) {
+                    const groupSize = rEnd - rStart + 1;
+                    const confined = uniqueRegions.filter(rId => regionConfinedToRows(rId, rStart, rEnd));
+                    if (confined.length === groupSize) {
+                        let blockedSomething = false;
+                        for (let r = rStart; r <= rEnd; r++) {
+                            for (let c = 0; c < currentSize; c++) {
+                                if (grid[r][c] === 0 && !confined.includes(regions[r][c])) {
+                                    grid[r][c] = 2;
+                                    blockedSomething = true;
+                                    logMessage(`[RULE: CONFINED GROUP] Blocked R${r+1}C${c+1} (Rows ${rStart+1}-${rEnd+1} confined to regions {${confined.join(',')}}).`, 'text-pink-400');
+                                }
+                            }
+                        }
+                        if (blockedSomething) return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // Checks if playing a cat in a cell leaves a neighbor region with zero valid cells
+        function runAdjacencyTrap() {
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 0) { // Test cell
+
+                        // Create deep sandbox copy to model mock placement state
+                        let sandbox = copyMatrix(grid);
+                        sandbox[r][c] = 1; // Play mock cat
+
+                        // Mock exclusions cascade on sandbox copy
+                        const myRegion = regions[r][c];
+                        for (let i = 0; i < currentSize; i++) {
+                            sandbox[r][i] = sandbox[r][i] === 0 ? 2 : sandbox[r][i];
+                            sandbox[i][c] = sandbox[i][c] === 0 ? 2 : sandbox[i][c];
+                        }
+                        for (let x = 0; x < currentSize; x++) {
+                            for (let y = 0; y < currentSize; y++) {
+                                if (regions[x][y] === myRegion && sandbox[x][y] === 0) sandbox[x][y] = 2;
+                            }
+                        }
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                const nr = r + dr, nc = c + dc;
+                                if (nr >= 0 && nr < currentSize && nc >= 0 && nc < currentSize) {
+                                    if (sandbox[nr][nc] === 0) sandbox[nr][nc] = 2;
+                                }
+                            }
+                        }
+
+                        // Evaluate if any unfinished region has now been blocked completely
+                        let triggersTrap = false;
+                        let trappedRegionId = -1;
+
+                        for (const rId of uniqueRegions) {
+                            if (rId === myRegion) continue;
+
+                            let originalRegionHasCat = false;
+                            for (let x = 0; x < currentSize; x++) {
+                                for (let y = 0; y < currentSize; y++) {
+                                    if (regions[x][y] === rId && grid[x][y] === 1) originalRegionHasCat = true;
+                                }
+                            }
+
+                            if (originalRegionHasCat) continue;
+
+                            // Calculate available slots left in the sandbox copy for this region
+                            let slotsRemainingInSandbox = 0;
+                            for (let x = 0; x < currentSize; x++) {
+                                for (let y = 0; y < currentSize; y++) {
+                                    if (regions[x][y] === rId && (sandbox[x][y] === 0 || sandbox[x][y] === 1)) {
+                                        slotsRemainingInSandbox++;
+                                    }
+                                }
+                            }
+
+                            if (slotsRemainingInSandbox === 0) {
+                                triggersTrap = true;
+                                trappedRegionId = rId;
+                                break;
+                            }
+                        }
+
+                        if (triggersTrap) {
+                            grid[r][c] = 2; // Mark as blocked permanently
+                            logMessage(`[RULE: ADJACENCY TRAP] Blocked R${r+1}C${c+1} (playing a cat here starves Region ${trappedRegionId}).`, 'text-indigo-400 font-semibold');
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Backtracking fallback search executed when deterministic rules dry up
+        function runBacktrackGuess() {
+            // Pick cell in an unfinished region/row/col that has the fewest options (MRV heuristic)
+            let bestCell = null;
+            let minOptions = Infinity;
+
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 0) {
+                        // Count open squares in its region
+                        const rId = regions[r][c];
+                        let count = 0;
+                        for (let x = 0; x < currentSize; x++) {
+                            for (let y = 0; y < currentSize; y++) {
+                                if (regions[x][y] === rId && grid[x][y] === 0) count++;
+                            }
+                        }
+                        if (count < minOptions && count > 0) {
+                            minOptions = count;
+                            bestCell = {r, c};
+                        }
+                    }
+                }
+            }
+
+            if (bestCell) {
+                // Save current state snapshot before trying branches
+                historyStack.push({
+                    grid: copyMatrix(grid),
+                    cell: bestCell
+                });
+
+                grid[bestCell.r][bestCell.c] = 1; // Play the branch guess
+                logMessage(`[BACKTRACK BRANCH] Deterministic rules stalled. Guessing Cat at R${bestCell.r+1}C${bestCell.c+1} (Min-Remaining options: ${minOptions}).`, 'text-violet-400 italic');
+                return true;
+            }
+            return false;
+        }
+
+        // Validate board logic boundaries (returns true if puzzle constraints are validated)
+        function checkContradictions() {
+            const uniqueRegions = [...new Set(regions.flat())];
+
+            // 1. Check if any region has multiple cats or is choked (0 slots and 0 cats)
+            for (const rId of uniqueRegions) {
+                let cats = 0;
+                let open = 0;
+                for (let r = 0; r < currentSize; r++) {
+                    for (let c = 0; c < currentSize; c++) {
+                        if (regions[r][c] === rId) {
+                            if (grid[r][c] === 1) cats++;
+                            if (grid[r][c] === 0) open++;
+                        }
+                    }
+                }
+                if (cats > 1 || (cats === 0 && open === 0)) return true; // Contradiction!
+            }
+
+            // 2. Check Rows
+            for (let r = 0; r < currentSize; r++) {
+                let cats = 0, open = 0;
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) cats++;
+                    if (grid[r][c] === 0) open++;
+                }
+                if (cats > 1 || (cats === 0 && open === 0)) return true;
+            }
+
+            // 3. Check Cols
+            for (let c = 0; c < currentSize; c++) {
+                let cats = 0, open = 0;
+                for (let r = 0; r < currentSize; r++) {
+                    if (grid[r][c] === 1) cats++;
+                    if (grid[r][c] === 0) open++;
+                }
+                if (cats > 1 || (cats === 0 && open === 0)) return true;
+            }
+
+            // 4. Neighbor checks
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) {
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                const nr = r + dr, nc = c + dc;
+                                if (nr >= 0 && nr < currentSize && nc >= 0 && nc < currentSize) {
+                                    if (grid[nr][nc] === 1) return true; // Cats touching!
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // Main orchestrator to drive logic steps
+        function solveNextStep() {
+            // Save snapshot for back button
+            stepHistory.push(copyMatrix(grid));
+            lastUpdatedCells = [];
+
+            // First, test for contradictions and trigger backtracking rollbacks if we've hit a dead-end
+            if (checkContradictions()) {
+                if (historyStack.length > 0) {
+                    const snap = historyStack.pop();
+                    grid = snap.grid;
+                    // Since placing a cat failed, that target cell MUST be blocked
+                    grid[snap.cell.r][snap.cell.c] = 2;
+                    lastUpdatedCells = [{r: snap.cell.r, c: snap.cell.c}];
+                    logMessage(`[BACKTRACK ROLLBACK] Confirmed contradiction. Reverting and blocking R${snap.cell.r+1}C${snap.cell.c+1}.`, 'text-rose-400 font-bold');
+                    renderGrid();
+                    return true;
+                } else {
+                    stepHistory.pop(); // no change, remove snapshot
+                    logMessage("[ERROR] Puzzle state contains unresolvable contradictions! Check configuration details.", 'text-rose-500 font-black');
+                    return false;
+                }
+            }
+
+            // Execute deterministic checks hierarchically
+            if (applyExclusions()) { trackChanges(); renderGrid(); return true; }
+            if (runSingletons()) { trackChanges(); renderGrid(); return true; }
+            if (runIntersection()) { trackChanges(); renderGrid(); return true; }
+            if (runReverseIntersection()) { trackChanges(); renderGrid(); return true; }
+            if (runConfinedGroup()) { trackChanges(); renderGrid(); return true; }
+            if (runAdjacencyTrap()) { trackChanges(); renderGrid(); return true; }
+
+            // Check if solved
+            const totalCats = grid.flat().filter(cell => cell === 1).length;
+            if (totalCats === currentSize) {
+                stepHistory.pop(); // no change, remove snapshot
+                logMessage(`🎉 PUZZLE SOLVED! Successfully placed all ${currentSize} cats without errors.`, 'text-emerald-400 font-black text-sm');
+                return false;
+            }
+
+            // Try guess/backtrack branch since deterministic passes stalled
+            if (runBacktrackGuess()) { trackChanges(); renderGrid(); return true; }
+
+            stepHistory.pop(); // no change, remove snapshot
+            logMessage("[SYSTEM] No logical moves remaining. If puzzle is unsolved, it may have multiple answers or conflicts.", 'text-amber-500');
+            return false;
+        }
+
+        // Compare current grid to last snapshot to find changed cells
+        function trackChanges() {
+            if (stepHistory.length === 0) return;
+            const prev = stepHistory[stepHistory.length - 1];
+            lastUpdatedCells = [];
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] !== prev[r][c]) {
+                        lastUpdatedCells.push({r, c});
+                    }
+                }
+            }
+        }
+
+        // Undo last solve step
+        function solveBack() {
+            if (stepHistory.length === 0) {
+                logMessage("[SYSTEM] Nothing to undo.", "text-amber-400");
+                return;
+            }
+            grid = stepHistory.pop();
+            lastUpdatedCells = [];
+            renderGrid();
+            logMessage("[SYSTEM] Reverted to previous step.", "text-indigo-400");
+        }
+
+        // Instantly solve by looping the logical step engine
+        function solveInstantly() {
+            logMessage("[SYSTEM] Running fast solve execution cycle...", 'text-indigo-300');
+            let steps = 0;
+            const maxSteps = 500; // safety ceiling
+            
+            while (steps < maxSteps) {
+                const proceeded = solveNextStep();
+                if (!proceeded) break;
+                steps++;
+            }
+            
+            if (steps >= maxSteps) {
+                logMessage("[ERROR] Loop safety ceiling reached. Execution halted to prevent browser locking.", "text-rose-500");
+            }
+        }
+
+        // Load the screenshot level layout immediately on launch
+        window.onload = () => {
+            init(DEFAULT_CONFIG);
+        };
+    </script>
 </body>
 </html>
