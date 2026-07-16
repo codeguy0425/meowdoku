@@ -483,8 +483,8 @@
                     if (grid[r][c] === 1) { // We have a Cat
                         // 1. Block out row & col
                         for (let i = 0; i < currentSize; i++) {
-                            if (grid[r][i] === 0) { grid[r][i] = 2; changed = true; logMessage(`[RULE: EXCLUSION] Blocked R${r+1}C${i+1} due to Cat in same row.`, 'text-cyan-500'); }
-                            if (grid[i][c] === 0) { grid[i][c] = 2; changed = true; logMessage(`[RULE: EXCLUSION] Blocked R${i+1}C${c+1} due to Cat in same column.`, 'text-cyan-500'); }
+                            if (grid[r][i] === 0) { grid[r][i] = 2; changed = true; logMessage(`[RULE: EXCLUSION] R${r+1}C${i+1} blocked — cat in R${r+1}C${c+1} controls row ${r+1}.`, 'text-cyan-500'); }
+                            if (grid[i][c] === 0) { grid[i][c] = 2; changed = true; logMessage(`[RULE: EXCLUSION] R${i+1}C${c+1} blocked — cat in R${r+1}C${c+1} controls col ${c+1}.`, 'text-cyan-500'); }
                         }
                         // 2. Block region
                         const myRegion = regions[r][c];
@@ -493,7 +493,7 @@
                                 if (regions[x][y] === myRegion && grid[x][y] === 0) {
                                     grid[x][y] = 2;
                                     changed = true;
-                                    logMessage(`[RULE: EXCLUSION] Blocked R${x+1}C${y+1} (same region as R${r+1}C${c+1}).`, 'text-cyan-500');
+                                    logMessage(`[RULE: EXCLUSION] R${x+1}C${y+1} blocked — region ${myRegion} already has cat at R${r+1}C${c+1}.`, 'text-cyan-500');
                                 }
                             }
                         }
@@ -506,7 +506,7 @@
                                     if (grid[nr][nc] === 0) {
                                         grid[nr][nc] = 2;
                                         changed = true;
-                                        logMessage(`[RULE: EXCLUSION] Blocked R${nr+1}C${nc+1} (adjacent neighbor to R${r+1}C${c+1}).`, 'text-cyan-500');
+                                        logMessage(`[RULE: EXCLUSION] R${nr+1}C${nc+1} blocked — too close to cat at R${r+1}C${c+1} (diagonal).`, 'text-cyan-500');
                                     }
                                 }
                             }
@@ -538,7 +538,7 @@
                 if (!hasCat && openSlots.length === 1) {
                     const target = openSlots[0];
                     grid[target.r][target.c] = 1;
-                    logMessage(`[RULE: SINGLETON] Cat placed at R${target.r+1}C${target.c+1} (Region ID ${rId} has only 1 slot left!).`, 'text-emerald-400 font-bold');
+                    logMessage(`[RULE: SINGLETON] Region ${rId} has only 1 open cell → cat at R${target.r+1}C${target.c+1}.`, 'text-emerald-400 font-bold');
                     return true;
                 }
             }
@@ -554,7 +554,7 @@
                 if (!hasCat && openSlots.length === 1) {
                     const c = openSlots[0];
                     grid[r][c] = 1;
-                    logMessage(`[RULE: SINGLETON] Cat placed at R${r+1}C${c+1} (Row ${r+1} has only 1 slot left!).`, 'text-emerald-400 font-bold');
+                    logMessage(`[RULE: SINGLETON] Row ${r+1} has only 1 open cell → cat at R${r+1}C${c+1}.`, 'text-emerald-400 font-bold');
                     return true;
                 }
             }
@@ -570,7 +570,7 @@
                 if (!hasCat && openSlots.length === 1) {
                     const r = openSlots[0];
                     grid[r][c] = 1;
-                    logMessage(`[RULE: SINGLETON] Cat placed at R${r+1}C${c+1} (Column ${c+1} has only 1 slot left!).`, 'text-emerald-400 font-bold');
+                    logMessage(`[RULE: SINGLETON] Column ${c+1} has only 1 open cell → cat at R${r+1}C${c+1}.`, 'text-emerald-400 font-bold');
                     return true;
                 }
             }
@@ -605,7 +605,7 @@
                         if (grid[targetRow][c] === 0 && regions[targetRow][c] !== rId) {
                             grid[targetRow][c] = 2;
                             blockedSomething = true;
-                            logMessage(`[RULE: INTERSECTION] Blocked R${targetRow+1}C${c+1} (Row ${targetRow+1} cat must lie inside Region ${rId}).`, 'text-amber-500');
+                            logMessage(`[RULE: INTERSECTION] Region ${rId} open cells all in row ${targetRow+1} → blocked R${targetRow+1}C${c+1} (region ${regions[targetRow][c]} can't be here).`, 'text-amber-500');
                         }
                     }
                     if (blockedSomething) return true;
@@ -621,7 +621,7 @@
                         if (grid[r][targetCol] === 0 && regions[r][targetCol] !== rId) {
                             grid[r][targetCol] = 2;
                             blockedSomething = true;
-                            logMessage(`[RULE: INTERSECTION] Blocked R${r+1}C${targetCol+1} (Col ${targetCol+1} cat must lie inside Region ${rId}).`, 'text-amber-500');
+                            logMessage(`[RULE: INTERSECTION] Region ${rId} open cells all in col ${targetCol+1} → blocked R${r+1}C${targetCol+1} (region ${regions[r][targetCol]} can't be here).`, 'text-amber-500');
                         }
                     }
                     if (blockedSomething) return true;
@@ -653,7 +653,7 @@
                             if (regions[x][y] === rId && grid[x][y] === 0 && x !== r) {
                                 grid[x][y] = 2;
                                 blockedSomething = true;
-                                logMessage(`[RULE: REVERSE INTERSECTION] Blocked R${x+1}C${y+1} (Row ${r+1} open cells all in Region ${rId}).`, 'text-amber-500');
+                                logMessage(`[RULE: REVERSE INTERSECTION] Row ${r+1} open cells all in region ${rId} → blocked R${x+1}C${y+1} (region ${rId} must stay in row ${r+1}).`, 'text-amber-500');
                             }
                         }
                     }
@@ -680,7 +680,7 @@
                             if (regions[x][y] === rId && grid[x][y] === 0 && y !== c) {
                                 grid[x][y] = 2;
                                 blockedSomething = true;
-                                logMessage(`[RULE: REVERSE INTERSECTION] Blocked R${x+1}C${y+1} (Col ${c+1} open cells all in Region ${rId}).`, 'text-amber-500');
+                                logMessage(`[RULE: REVERSE INTERSECTION] Col ${c+1} open cells all in region ${rId} → blocked R${x+1}C${y+1} (region ${rId} must stay in col ${c+1}).`, 'text-amber-500');
                             }
                         }
                     }
@@ -723,7 +723,7 @@
                                 if (grid[r][c] === 0 && !confined.includes(regions[r][c])) {
                                     grid[r][c] = 2;
                                     blockedSomething = true;
-                                    logMessage(`[RULE: CONFINED GROUP] Blocked R${r+1}C${c+1} (Cols ${cStart+1}-${cEnd+1} confined to regions {${confined.join(',')}}).`, 'text-pink-400');
+                                    logMessage(`[RULE: CONFINED GROUP] ${groupSize} cols (C${cStart+1}-C${cEnd+1}) fully hold regions ${confined.sort((a,b)=>a-b).join(',')} → blocked R${r+1}C${c+1} (region ${regions[r][c]} can't fit here).`, 'text-pink-400');
                                 }
                             }
                         }
@@ -744,7 +744,7 @@
                                 if (grid[r][c] === 0 && !confined.includes(regions[r][c])) {
                                     grid[r][c] = 2;
                                     blockedSomething = true;
-                                    logMessage(`[RULE: CONFINED GROUP] Blocked R${r+1}C${c+1} (Rows ${rStart+1}-${rEnd+1} confined to regions {${confined.join(',')}}).`, 'text-pink-400');
+                                    logMessage(`[RULE: CONFINED GROUP] ${groupSize} rows (R${rStart+1}-R${rEnd+1}) fully hold regions ${confined.sort((a,b)=>a-b).join(',')} → blocked R${r+1}C${c+1} (region ${regions[r][c]} can't fit here).`, 'text-pink-400');
                                 }
                             }
                         }
@@ -824,7 +824,7 @@
 
                         if (triggersTrap) {
                             grid[r][c] = 2; // Mark as blocked permanently
-                            logMessage(`[RULE: ADJACENCY TRAP] Blocked R${r+1}C${c+1} (playing a cat here starves Region ${trappedRegionId}).`, 'text-indigo-400 font-semibold');
+                            logMessage(`[RULE: ADJACENCY TRAP] R${r+1}C${c+1} blocked — placing cat here leaves region ${trappedRegionId} with 0 open cells.`, 'text-indigo-400 font-semibold');
                             return true;
                         }
                     }
@@ -866,7 +866,7 @@
                 });
 
                 grid[bestCell.r][bestCell.c] = 1; // Play the branch guess
-                logMessage(`[BACKTRACK BRANCH] Deterministic rules stalled. Guessing Cat at R${bestCell.r+1}C${bestCell.c+1} (Min-Remaining options: ${minOptions}).`, 'text-violet-400 italic');
+                logMessage(`[BACKTRACK] No logical moves — guessing cat at R${bestCell.r+1}C${bestCell.c+1} (${minOptions} open cells in region ${regions[bestCell.r][bestCell.c]}).`, 'text-violet-400 italic');
                 return true;
             }
             return false;
@@ -945,7 +945,7 @@
                     // Since placing a cat failed, that target cell MUST be blocked
                     grid[snap.cell.r][snap.cell.c] = 2;
                     lastUpdatedCells = [{r: snap.cell.r, c: snap.cell.c}];
-                    logMessage(`[BACKTRACK ROLLBACK] Confirmed contradiction. Reverting and blocking R${snap.cell.r+1}C${snap.cell.c+1}.`, 'text-rose-400 font-bold');
+                    logMessage(`[BACKTRACK] Guess was wrong — blocking R${snap.cell.r+1}C${snap.cell.c+1} and trying next path.`, 'text-rose-400 font-bold');
                     renderGrid();
                     return true;
                 } else {
