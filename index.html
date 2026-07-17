@@ -447,7 +447,7 @@
             }
             const config = {
                 size: currentSize,
-                regions: regions,
+                regions: regions.slice(0, currentSize).map(row => row.slice(0, currentSize)),
                 cats: cats,
                 blocked: blocked
             };
