@@ -103,6 +103,9 @@
                     <button onclick="setTool('block')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="block">
                         <span>❌</span> Block
                     </button>
+                    <button onclick="setTool('swap')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="swap">
+                        <span>🔁</span> Swap
+                    </button>
                     <div class="w-px h-6 bg-slate-700 mx-1"></div>
                     <!-- Region color swatches -->
                     <div class="flex flex-wrap gap-1.5">
@@ -254,6 +257,19 @@
             9: "#36a9c5"  // Teal/Cyan
         };
 
+        const REGION_TEXT_COLORS = {
+            0: "#1a2e05",
+            1: "#ffffff",
+            2: "#2e0a28",
+            3: "#1a1833",
+            4: "#2e2300",
+            5: "#0a1a2e",
+            6: "#2e2a05",
+            7: "#ffffff",
+            8: "#2e0a18",
+            9: "#051a22"
+        };
+
         let currentSize = 10;
         let regions = [];
         let grid = []; // 0 = empty, 1 = cat, 2 = blocked
@@ -261,11 +277,13 @@
         let stepHistory = []; // full grid snapshots for back button
         let lastUpdatedCells = []; // cells changed in the most recent step [{r, c, val}]
         let currentTool = 'none';
+        let swapPending = null; // stores first region ID picked for swapping
 
         const TOOL_LABELS = {
             none: '🔍 Inspect',
             cat: '🐱 Cat',
             block: '❌ Block',
+            swap: '🔁 Swap',
             region0: '🎨 Region 0',
             region1: '🎨 Region 1',
             region2: '🎨 Region 2',
@@ -279,7 +297,43 @@
         };
 
         function setTool(tool) {
+            // If in swap mode and clicking a region swatch, handle swap selection
+            if (currentTool === 'swap' && tool.startsWith('region')) {
+                const rId = parseInt(tool.replace('region', ''), 10);
+                if (swapPending === null) {
+                    swapPending = rId;
+                    logMessage(`[SWAP] First region selected: ${rId}. Click another region swatch to swap colors.`, 'text-orange-400');
+                } else if (swapPending === rId) {
+                    swapPending = null;
+                    logMessage(`[SWAP] Same region selected — cancelled.`, 'text-orange-400');
+                } else {
+                    const fromId = swapPending;
+                    const toId = rId;
+                    swapPending = null;
+                    // Swap colors
+                    const tempColor = REGION_COLORS[fromId];
+                    REGION_COLORS[fromId] = REGION_COLORS[toId];
+                    REGION_COLORS[toId] = tempColor;
+                    // Also swap text color if it exists
+                    if (REGION_TEXT_COLORS) {
+                        const tempText = REGION_TEXT_COLORS[fromId];
+                        REGION_TEXT_COLORS[fromId] = REGION_TEXT_COLORS[toId];
+                        REGION_TEXT_COLORS[toId] = tempText;
+                    }
+                    renderGrid();
+                    // Update swatch button styles
+                    document.querySelectorAll('.region-swatch').forEach(btn => {
+                        const btnRId = parseInt(btn.dataset.tool.replace('region', ''), 10);
+                        btn.style.backgroundColor = REGION_COLORS[btnRId] || '#475569';
+                        if (REGION_TEXT_COLORS) btn.style.color = REGION_TEXT_COLORS[btnRId] || '#ffffff';
+                    });
+                    logMessage(`[SWAP] Swapped region ${fromId} ↔ ${toId}.`, 'text-orange-400');
+                }
+                return;
+            }
+
             currentTool = tool;
+            swapPending = null;
             document.querySelectorAll('.tool-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.tool === tool) {
@@ -325,6 +379,7 @@
                     // Region background styling
                     const regionId = regions[r][c];
                     cell.style.backgroundColor = REGION_COLORS[regionId] || '#475569';
+                    cell.style.color = REGION_TEXT_COLORS[regionId] || '#ffffff';
 
                     // Mark cats/blocks icons
                     if (grid[r][c] === 1) {
