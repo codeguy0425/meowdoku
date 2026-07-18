@@ -1214,34 +1214,16 @@
                 }
             }
 
-            // Keep running rules in priority order, restarting from singletons after each change
-            let changed = true;
-            let rule = '';
-            while (changed) {
-                changed = false;
-                // 1. Exclusions (from cats)
-                if (applyExclusions()) { changed = true; rule = 'exclusions'; continue; }
-                // 2. Singletons — cheapest, re-check first after any change
-                if (runSingletons()) { changed = true; rule = 'singleton'; continue; }
-                // 3. Intersection — one region's cells all in one row/col
-                if (runIntersection()) { changed = true; rule = 'intersection'; continue; }
-                // 4. Reverse intersection — one row/col's open cells all in one region
-                if (runReverseIntersection()) { changed = true; rule = 'reverse intersection'; continue; }
-                // 5. Contiguous confined group
-                if (runConfinedGroup()) { changed = true; rule = 'confined group'; continue; }
-                // 6. Non-contiguous confined group
-                if (runDisjointConfinedGroup()) { changed = true; rule = 'disjoint confined group'; continue; }
-                // 7. Adjacent pair block — 2×1 / 3×1 region shapes
-                if (runAdjacentPairBlock()) { changed = true; rule = 'adjacent block'; continue; }
-                // 8. Adjacent pair block by row/col — 2 adjacent cells remaining in a row/col
-                if (runAdjacentRowColBlock()) { changed = true; rule = 'adjacent row/col block'; continue; }
-                // 9. Adjacency trap — placing a cat strands a region
-                if (runAdjacencyTrap()) { changed = true; rule = 'adjacency trap'; continue; }
-            }
-
-            // Track changes and update UI once after all deductions
-            trackChanges();
-            renderGrid();
+            // Execute deterministic checks hierarchically — one rule per step
+            if (applyExclusions()) { trackChanges(); renderGrid(); return true; }
+            if (runSingletons()) { trackChanges(); renderGrid(); return true; }
+            if (runIntersection()) { trackChanges(); renderGrid(); return true; }
+            if (runReverseIntersection()) { trackChanges(); renderGrid(); return true; }
+            if (runConfinedGroup()) { trackChanges(); renderGrid(); return true; }
+            if (runDisjointConfinedGroup()) { trackChanges(); renderGrid(); return true; }
+            if (runAdjacentPairBlock()) { trackChanges(); renderGrid(); return true; }
+            if (runAdjacentRowColBlock()) { trackChanges(); renderGrid(); return true; }
+            if (runAdjacencyTrap()) { trackChanges(); renderGrid(); return true; }
 
             // Check if solved
             const totalCats = grid.flat().filter(cell => cell === 1).length;
