@@ -923,23 +923,33 @@
 
         // Backtracking fallback search executed when deterministic rules dry up
         function runBacktrackGuess() {
-            // Pick cell in an unfinished region/row/col that has the fewest options (MRV heuristic)
+            // Pick cell minimizing open_in_row × open_in_col × open_in_region
             let bestCell = null;
-            let minOptions = Infinity;
+            let bestScore = Infinity;
+
+            // Precompute open cells per row, col, region
+            const openInRow = Array(currentSize).fill(0);
+            const openInCol = Array(currentSize).fill(0);
+            const openInRegion = {};
+            const uniqueRegions = [...new Set(regions.flat())];
+            for (const rId of uniqueRegions) openInRegion[rId] = 0;
 
             for (let r = 0; r < currentSize; r++) {
                 for (let c = 0; c < currentSize; c++) {
                     if (grid[r][c] === 0) {
-                        // Count open squares in its region
-                        const rId = regions[r][c];
-                        let count = 0;
-                        for (let x = 0; x < currentSize; x++) {
-                            for (let y = 0; y < currentSize; y++) {
-                                if (regions[x][y] === rId && grid[x][y] === 0) count++;
-                            }
-                        }
-                        if (count < minOptions && count > 0) {
-                            minOptions = count;
+                        openInRow[r]++;
+                        openInCol[c]++;
+                        openInRegion[regions[r][c]]++;
+                    }
+                }
+            }
+
+            for (let r = 0; r < currentSize; r++) {
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 0) {
+                        const score = openInRow[r] * openInCol[c] * openInRegion[regions[r][c]];
+                        if (score < bestScore) {
+                            bestScore = score;
                             bestCell = {r, c};
                         }
                     }
@@ -947,14 +957,13 @@
             }
 
             if (bestCell) {
-                // Save current state snapshot before trying branches
                 historyStack.push({
                     grid: copyMatrix(grid),
                     cell: bestCell
                 });
 
-                grid[bestCell.r][bestCell.c] = 1; // Play the branch guess
-                logMessage(`[BACKTRACK] No logical moves — guessing cat at R${bestCell.r+1}C${bestCell.c+1} (${minOptions} open cells in region ${regions[bestCell.r][bestCell.c]}).`, 'text-violet-400 italic');
+                grid[bestCell.r][bestCell.c] = 1;
+                logMessage(`[BACKTRACK] Guessing cat at R${bestCell.r+1}C${bestCell.c+1} (score=${bestScore})`, 'text-violet-400 italic');
                 return true;
             }
             return false;
