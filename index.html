@@ -334,8 +334,16 @@
                         renderGrid(); updateSwatchStyles();
                         logMessage(`[SWAP] Swapped region ${fromId} ↔ ${rId}.`, 'text-orange-400');
                     } else {
+                        // swapPending is a color hex — apply to region, and put region's old color back on the source
+                        const sourceBtn = document.querySelector(`[data-tool="${swapPending === '#f97316' ? 'color-orange' : 'color-darkblue'}"]`);
+                        const oldColor = REGION_COLORS[rId];
                         REGION_COLORS[rId] = swapPending;
                         REGION_TEXT_COLORS[rId] = getTextColorForBg(swapPending);
+                        if (sourceBtn) {
+                            sourceBtn.style.backgroundColor = oldColor;
+                            sourceBtn.style.color = getTextColorForBg(oldColor);
+                            sourceBtn.title = oldColor;
+                        }
                         swapPending = null;
                         renderGrid(); updateSwatchStyles();
                         logMessage(`[SWAP] Applied color to region ${rId}.`, 'text-emerald-400');
