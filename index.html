@@ -133,18 +133,7 @@
             </div>
 
             <!-- Palette Legend & Info -->
-            <div class="w-full grid grid-cols-5 md:grid-cols-10 gap-2 mt-4 text-[10px] text-center font-semibold text-slate-400">
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #a2e082"></div><span>Reg 0</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #2d8a4e"></div><span>Reg 1</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #f199e8"></div><span>Reg 2</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #8b7feb"></div><span>Reg 3</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #d9a406"></div><span>Reg 4</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #a7cdf2"></div><span>Reg 5</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #fce18a"></div><span>Reg 6</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #ab754f"></div><span>Reg 7</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #d67093"></div><span>Reg 8</span></div>
-                <div class="flex flex-col items-center"><div class="w-4 h-4 rounded" style="background-color: #36a9c5"></div><span>Reg 9</span></div>
-            </div>
+            <div id="region-legend" class="w-full grid grid-cols-5 md:grid-cols-10 gap-2 mt-4 text-[10px] text-center font-semibold text-slate-400"></div>
 
         </div>
 
@@ -442,6 +431,23 @@
                 }
             }
             updateSwatchStyles();
+            // Update region legend
+            const legend = document.getElementById('region-legend');
+            if (legend) {
+                legend.innerHTML = '';
+                for (let i = 0; i < 10; i++) {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'flex flex-col items-center';
+                    const dot = document.createElement('div');
+                    dot.className = 'w-4 h-4 rounded';
+                    dot.style.backgroundColor = displayColors[i] || REGION_COLORS[i] || '#475569';
+                    swatch.appendChild(dot);
+                    const label = document.createElement('span');
+                    label.textContent = 'Reg ' + i;
+                    swatch.appendChild(label);
+                    legend.appendChild(swatch);
+                }
+            }
         }
 
         // Logic routing for cell interactions
