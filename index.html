@@ -1004,6 +1004,85 @@
             return false;
         }
 
+        // If a row/col has exactly 2-3 adjacent open cells (any regions), block shared neighbors
+        function runAdjacentRowColBlock() {
+            let blockedSomething = false;
+
+            // Check Rows
+            for (let r = 0; r < currentSize; r++) {
+                let hasCat = false;
+                let openCols = [];
+                for (let c = 0; c < currentSize; c++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openCols.push(c);
+                }
+                if (hasCat || openCols.length < 2 || openCols.length > 3) continue;
+
+                // Check they're adjacent
+                const adjacent = openCols.every((c, i) => i === 0 || c === openCols[i-1] + 1);
+                if (!adjacent) continue;
+
+                const c0 = openCols[0];
+                if (openCols.length === 2) {
+                    for (const nr of [r - 1, r + 1]) {
+                        if (nr >= 0 && nr < currentSize && grid[nr][c0] === 0) {
+                            grid[nr][c0] = 2; blockedSomething = true;
+                            logMessage(`[RULE: ADJACENT ROW/COL] Row ${r+1} 2 cells at C${c0+1}-C${c0+2} → blocked R${nr+1}C${c0+1}.`, 'text-sky-400');
+                        }
+                        if (nr >= 0 && nr < currentSize && grid[nr][c0+1] === 0) {
+                            grid[nr][c0+1] = 2; blockedSomething = true;
+                            logMessage(`[RULE: ADJACENT ROW/COL] Row ${r+1} 2 cells at C${c0+1}-C${c0+2} → blocked R${nr+1}C${c0+2}.`, 'text-sky-400');
+                        }
+                    }
+                } else {
+                    for (const nr of [r - 1, r + 1]) {
+                        if (nr >= 0 && nr < currentSize && grid[nr][c0+1] === 0) {
+                            grid[nr][c0+1] = 2; blockedSomething = true;
+                            logMessage(`[RULE: ADJACENT ROW/COL] Row ${r+1} 3 cells at C${c0+1}-C${c0+3} → blocked R${nr+1}C${c0+2}.`, 'text-sky-400');
+                        }
+                    }
+                }
+            }
+
+            // Check Columns
+            for (let c = 0; c < currentSize; c++) {
+                let hasCat = false;
+                let openRows = [];
+                for (let r = 0; r < currentSize; r++) {
+                    if (grid[r][c] === 1) hasCat = true;
+                    if (grid[r][c] === 0) openRows.push(r);
+                }
+                if (hasCat || openRows.length < 2 || openRows.length > 3) continue;
+
+                const adjacent = openRows.every((r, i) => i === 0 || r === openRows[i-1] + 1);
+                if (!adjacent) continue;
+
+                const r0 = openRows[0];
+                if (openRows.length === 2) {
+                    for (const nc of [c - 1, c + 1]) {
+                        if (nc >= 0 && nc < currentSize && grid[r0][nc] === 0) {
+                            grid[r0][nc] = 2; blockedSomething = true;
+                            logMessage(`[RULE: ADJACENT ROW/COL] Col ${c+1} 2 cells at R${r0+1}-R${r0+2} → blocked R${r0+1}C${nc+1}.`, 'text-sky-400');
+                        }
+                        if (nc >= 0 && nc < currentSize && grid[r0+1][nc] === 0) {
+                            grid[r0+1][nc] = 2; blockedSomething = true;
+                            logMessage(`[RULE: ADJACENT ROW/COL] Col ${c+1} 2 cells at R${r0+1}-R${r0+2} → blocked R${r0+2}C${nc+1}.`, 'text-sky-400');
+                        }
+                    }
+                } else {
+                    for (const nc of [c - 1, c + 1]) {
+                        if (nc >= 0 && nc < currentSize && grid[r0+1][nc] === 0) {
+                            grid[r0+1][nc] = 2; blockedSomething = true;
+                            logMessage(`[RULE: ADJACENT ROW/COL] Col ${c+1} 3 cells at R${r0+1}-R${r0+3} → blocked R${r0+2}C${nc+1}.`, 'text-sky-400');
+                        }
+                    }
+                }
+            }
+
+            if (blockedSomething) return true;
+            return false;
+        }
+
         // Backtracking fallback search executed when deterministic rules dry up
         function runBacktrackGuess() {
             // Pick cell minimizing open_in_row × open_in_col × open_in_region
@@ -1154,7 +1233,9 @@
                 if (runDisjointConfinedGroup()) { changed = true; rule = 'disjoint confined group'; continue; }
                 // 7. Adjacent pair block — 2×1 / 3×1 region shapes
                 if (runAdjacentPairBlock()) { changed = true; rule = 'adjacent block'; continue; }
-                // 8. Adjacency trap — placing a cat strands a region
+                // 8. Adjacent pair block by row/col — 2 adjacent cells remaining in a row/col
+                if (runAdjacentRowColBlock()) { changed = true; rule = 'adjacent row/col block'; continue; }
+                // 9. Adjacency trap — placing a cat strands a region
                 if (runAdjacencyTrap()) { changed = true; rule = 'adjacency trap'; continue; }
             }
 
