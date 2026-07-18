@@ -756,6 +756,94 @@
             return false;
         }
 
+        // Non-contiguous confined groups: if N columns/rows fully contain exactly N regions,
+        // block other regions from those columns/rows
+        function runDisjointConfinedGroup() {
+            const uniqueRegions = [...new Set(regions.flat())];
+            const N = currentSize;
+
+            function regionColsSet(rId) {
+                const s = new Set();
+                for (let r = 0; r < N; r++) for (let c = 0; c < N; c++)
+                    if (regions[r][c] === rId) s.add(c);
+                return s;
+            }
+
+            function regionRowsSet(rId) {
+                const s = new Set();
+                for (let r = 0; r < N; r++) for (let c = 0; c < N; c++)
+                    if (regions[r][c] === rId) s.add(r);
+                return s;
+            }
+
+            // Precompute for efficiency
+            const regionCols = uniqueRegions.map(rId => ({ rId, cols: regionColsSet(rId) }));
+            const regionRows = uniqueRegions.map(rId => ({ rId, rows: regionRowsSet(rId) }));
+
+            // Generate all subsets of size k from array arr
+            function* combinations(arr, k) {
+                if (k === 0) { yield []; return; }
+                for (let i = 0; i <= arr.length - k; i++)
+                    for (const rest of combinations(arr.slice(i+1), k-1))
+                        yield [arr[i], ...rest];
+            }
+
+            // Check column subsets
+            const allCols = Array.from({length: N}, (_, i) => i);
+            for (let size = 2; size <= N - 1; size++) {
+                for (const subset of combinations(allCols, size)) {
+                    const colSet = new Set(subset);
+                    const confined = uniqueRegions.filter(rId => {
+                        const cols = regionCols.find(r => r.rId === rId).cols;
+                        for (const c of cols) if (!colSet.has(c)) return false;
+                        return true;
+                    });
+                    if (confined.length === size) {
+                        // Check if already handled by contiguous rule
+                        const isContiguous = subset.every((c, i) => i === 0 || c === subset[i-1] + 1);
+                        if (isContiguous) continue;
+
+                        let blockedSomething = false;
+                        for (let r = 0; r < N; r++) for (const c of subset)
+                            if (grid[r][c] === 0 && !confined.includes(regions[r][c])) {
+                                grid[r][c] = 2;
+                                blockedSomething = true;
+                                logMessage(`[RULE: DISJOINT CONFINED GROUP] ${size} cols (${subset.map(c=>c+1).join(',')}) hold regions ${confined.sort((a,b)=>a-b).join(',')} → blocked R${r+1}C${c+1}.`, 'text-pink-400');
+                            }
+                        if (blockedSomething) return true;
+                    }
+                }
+            }
+
+            // Check row subsets
+            const allRows = Array.from({length: N}, (_, i) => i);
+            for (let size = 2; size <= N - 1; size++) {
+                for (const subset of combinations(allRows, size)) {
+                    const rowSet = new Set(subset);
+                    const confined = uniqueRegions.filter(rId => {
+                        const rows = regionRows.find(r => r.rId === rId).rows;
+                        for (const r of rows) if (!rowSet.has(r)) return false;
+                        return true;
+                    });
+                    if (confined.length === size) {
+                        const isContiguous = subset.every((r, i) => i === 0 || r === subset[i-1] + 1);
+                        if (isContiguous) continue;
+
+                        let blockedSomething = false;
+                        for (const r of subset) for (let c = 0; c < N; c++)
+                            if (grid[r][c] === 0 && !confined.includes(regions[r][c])) {
+                                grid[r][c] = 2;
+                                blockedSomething = true;
+                                logMessage(`[RULE: DISJOINT CONFINED GROUP] ${size} rows (${subset.map(r=>r+1).join(',')}) hold regions ${confined.sort((a,b)=>a-b).join(',')} → blocked R${r+1}C${c+1}.`, 'text-pink-400');
+                            }
+                        if (blockedSomething) return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         // Checks if playing a cat in a cell leaves a neighbor region with zero valid cells
         function runAdjacencyTrap() {
             const uniqueRegions = [...new Set(regions.flat())];
@@ -961,6 +1049,7 @@
             if (runIntersection()) { trackChanges(); renderGrid(); return true; }
             if (runReverseIntersection()) { trackChanges(); renderGrid(); return true; }
             if (runConfinedGroup()) { trackChanges(); renderGrid(); return true; }
+            if (runDisjointConfinedGroup()) { trackChanges(); renderGrid(); return true; }
             if (runAdjacencyTrap()) { trackChanges(); renderGrid(); return true; }
 
             // Check if solved
