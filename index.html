@@ -107,8 +107,8 @@
                         <span>🔁</span> Swap
                     </button>
                     <div class="flex gap-1.5 ml-2 pl-2 border-l border-slate-700">
-                        <button onclick="setTool('color-orange')" class="tool-btn flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="color-orange" style="background:#f97316;color:#fff" title="Orange">O</button>
-                        <button onclick="setTool('color-darkblue')" class="tool-btn flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="color-darkblue" style="background:#1e3a8a;color:#fff" title="Dark Blue">B</button>
+                        <button onclick="setTool('color-orange')" class="tool-btn flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="color-orange" style="background:#fb923c;color:#000" title="Orange">O</button>
+                        <button onclick="setTool('color-darkblue')" class="tool-btn flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="color-darkblue" style="background:#60a5fa;color:#000" title="Light Blue">B</button>
                     </div>
                     <div class="w-px h-6 bg-slate-700 mx-1"></div>
                     <!-- Region color swatches -->
@@ -335,7 +335,7 @@
                         logMessage(`[SWAP] Swapped region ${fromId} ↔ ${rId}.`, 'text-orange-400');
                     } else {
                         // swapPending is a color hex — apply to region, and put region's old color back on the source
-                        const sourceBtn = document.querySelector(`[data-tool="${swapPending === '#f97316' ? 'color-orange' : 'color-darkblue'}"]`);
+                        const sourceBtn = document.querySelector(`[data-tool="${swapPending === '#fb923c' ? 'color-orange' : 'color-darkblue'}"]`);
                         const oldColor = REGION_COLORS[rId];
                         REGION_COLORS[rId] = swapPending;
                         REGION_TEXT_COLORS[rId] = getTextColorForBg(swapPending);
@@ -349,7 +349,7 @@
                         logMessage(`[SWAP] Applied color to region ${rId}.`, 'text-emerald-400');
                     }
                 } else {
-                    const hex = tool === 'color-orange' ? '#f97316' : '#1e3a8a';
+                    const hex = tool === 'color-orange' ? '#fb923c' : '#60a5fa';
                     if (swapPending === null) { swapPending = hex; logMessage(`[SWAP] Color picked. Click a region to apply.`, 'text-orange-400'); }
                     else { swapPending = null; logMessage(`[SWAP] Cancelled.`, 'text-orange-400'); }
                 }
