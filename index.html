@@ -280,21 +280,33 @@
         }
 
         function updateSwatchStyles() {
-            document.querySelectorAll('.region-swatch').forEach(btn => {
-                const btnRId = parseInt(btn.dataset.tool.replace('region', ''), 10);
-                btn.style.backgroundColor = REGION_COLORS[btnRId] || '#475569';
-                btn.style.color = REGION_TEXT_COLORS[btnRId] || '#ffffff';
+            document.querySelectorAll('.region-swatch, [data-tool="color-orange"], [data-tool="color-darkblue"]').forEach(btn => {
+                const tool = btn.dataset.tool;
+                if (tool === 'color-orange') {
+                    btn.style.backgroundColor = sourceColorOrange;
+                    btn.style.color = getTextColorForBg(sourceColorOrange);
+                } else if (tool === 'color-darkblue') {
+                    btn.style.backgroundColor = sourceColorBlue;
+                    btn.style.color = getTextColorForBg(sourceColorBlue);
+                } else {
+                    const btnRId = parseInt(tool.replace('region', ''), 10);
+                    btn.style.backgroundColor = displayColors[btnRId] || REGION_COLORS[btnRId] || '#475569';
+                    btn.style.color = REGION_TEXT_COLORS[btnRId] || '#ffffff';
+                }
             });
         }
 
         let currentSize = 10;
         let regions = [];
-        let grid = []; // 0 = empty, 1 = cat, 2 = blocked
-        let historyStack = []; // stores snapshotted states for backtracking step simulation
-        let stepHistory = []; // full grid snapshots for back button
-        let lastUpdatedCells = []; // cells changed in the most recent step [{r, c, val}]
+        let grid = [];
+        let historyStack = [];
+        let stepHistory = [];
+        let lastUpdatedCells = [];
         let currentTool = 'none';
-        let swapPending = null; // stores first region ID picked for swapping
+        let swapPending = null;
+        let displayColors = {}; // maps region ID → hex color for display
+        let sourceColorOrange = '#fb923c';
+        let sourceColorBlue = '#60a5fa';
 
         const TOOL_LABELS = {
             none: '🔍 Inspect',
@@ -329,17 +341,19 @@
                     } else if (typeof swapPending === 'number') {
                         const fromId = swapPending;
                         swapPending = null;
-                        const tmpC = REGION_COLORS[fromId]; REGION_COLORS[fromId] = REGION_COLORS[rId]; REGION_COLORS[rId] = tmpC;
+                        const tmpC = displayColors[fromId]; displayColors[fromId] = displayColors[rId]; displayColors[rId] = tmpC;
                         const tmpT = REGION_TEXT_COLORS[fromId]; REGION_TEXT_COLORS[fromId] = REGION_TEXT_COLORS[rId]; REGION_TEXT_COLORS[rId] = tmpT;
                         renderGrid(); updateSwatchStyles();
                         logMessage(`[SWAP] Swapped region ${fromId} ↔ ${rId}.`, 'text-orange-400');
                     } else {
                         // swapPending is a color hex — apply to region, and put region's old color back on the source
                         const sourceBtn = document.querySelector(`[data-tool="${swapPending === '#fb923c' ? 'color-orange' : 'color-darkblue'}"]`);
-                        const oldColor = REGION_COLORS[rId];
-                        REGION_COLORS[rId] = swapPending;
+                        const oldColor = displayColors[rId];
+                        displayColors[rId] = swapPending;
                         REGION_TEXT_COLORS[rId] = getTextColorForBg(swapPending);
                         if (sourceBtn) {
+                            if (sourceBtn.dataset.tool === 'color-orange') sourceColorOrange = oldColor;
+                            else sourceColorBlue = oldColor;
                             sourceBtn.style.backgroundColor = oldColor;
                             sourceBtn.style.color = getTextColorForBg(oldColor);
                             sourceBtn.title = oldColor;
@@ -373,6 +387,10 @@
             regions = JSON.parse(JSON.stringify(config.regions));
             grid = Array.from({ length: currentSize }, () => Array(currentSize).fill(0));
             historyStack = [];
+            displayColors = {};
+            sourceColorOrange = '#fb923c';
+            sourceColorBlue = '#60a5fa';
+            for (let i = 0; i < 10; i++) displayColors[i] = REGION_COLORS[i] || '#475569';
 
             // Apply pre-placed items
             if (config.cats) {
@@ -402,7 +420,7 @@
                     
                     // Region background styling
                     const regionId = regions[r][c];
-                    cell.style.backgroundColor = REGION_COLORS[regionId] || '#475569';
+                    cell.style.backgroundColor = displayColors[regionId] || REGION_COLORS[regionId] || '#475569';
                     cell.style.color = REGION_TEXT_COLORS[regionId] || '#ffffff';
 
                     // Mark cats/blocks icons
@@ -423,6 +441,7 @@
                     container.appendChild(cell);
                 }
             }
+            updateSwatchStyles();
         }
 
         // Logic routing for cell interactions
