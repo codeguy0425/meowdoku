@@ -921,6 +921,89 @@
             return false;
         }
 
+        // If a region's last 2-3 open cells form a contiguous line, block shared neighbors
+        function runAdjacentPairBlock() {
+            const uniqueRegions = [...new Set(regions.flat())];
+            let blockedSomething = false;
+
+            for (const rId of uniqueRegions) {
+                let hasCat = false;
+                let openCells = [];
+                for (let r = 0; r < currentSize; r++) {
+                    for (let c = 0; c < currentSize; c++) {
+                        if (regions[r][c] === rId) {
+                            if (grid[r][c] === 1) hasCat = true;
+                            if (grid[r][c] === 0) openCells.push({r, c});
+                        }
+                    }
+                }
+                if (hasCat || openCells.length < 2 || openCells.length > 3) continue;
+
+                // Check if cells form a contiguous horizontal or vertical line
+                const rows = [...new Set(openCells.map(o => o.r))];
+                const cols = [...new Set(openCells.map(o => o.c))];
+                const isHorizontal = rows.length === 1 && cols.length === openCells.length;
+                const isVertical = cols.length === 1 && rows.length === openCells.length;
+                if (!isHorizontal && !isVertical) continue;
+
+                // Check they're actually adjacent
+                const sorted = isHorizontal
+                    ? openCells.sort((a, b) => a.c - b.c)
+                    : openCells.sort((a, b) => a.r - b.r);
+                const adjacent = sorted.every((cell, i) =>
+                    i === 0 || (isHorizontal ? cell.c === sorted[i-1].c + 1 : cell.r === sorted[i-1].r + 1));
+                if (!adjacent) continue;
+
+                const r0 = sorted[0].r, c0 = sorted[0].c;
+
+                if (openCells.length === 2) {
+                    // 2×1 — block 4 cells
+                    if (isHorizontal) {
+                        for (const nr of [r0 - 1, r0 + 1]) {
+                            if (nr >= 0 && nr < currentSize && grid[nr][c0] === 0) {
+                                grid[nr][c0] = 2; blockedSomething = true;
+                                logMessage(`[RULE: ADJACENT BLOCK] 2×1 at R${r0+1}C${c0+1}-C${c0+2} → blocked R${nr+1}C${c0+1}.`, 'text-indigo-400');
+                            }
+                            if (nr >= 0 && nr < currentSize && grid[nr][c0+1] === 0) {
+                                grid[nr][c0+1] = 2; blockedSomething = true;
+                                logMessage(`[RULE: ADJACENT BLOCK] 2×1 at R${r0+1}C${c0+1}-C${c0+2} → blocked R${nr+1}C${c0+2}.`, 'text-indigo-400');
+                            }
+                        }
+                    } else {
+                        for (const nc of [c0 - 1, c0 + 1]) {
+                            if (nc >= 0 && nc < currentSize && grid[r0][nc] === 0) {
+                                grid[r0][nc] = 2; blockedSomething = true;
+                                logMessage(`[RULE: ADJACENT BLOCK] 2×1 at R${r0+1}C${c0+1}-R${r0+2}C${c0+1} → blocked R${r0+1}C${nc+1}.`, 'text-indigo-400');
+                            }
+                            if (nc >= 0 && nc < currentSize && grid[r0+1][nc] === 0) {
+                                grid[r0+1][nc] = 2; blockedSomething = true;
+                                logMessage(`[RULE: ADJACENT BLOCK] 2×1 at R${r0+1}C${c0+1}-R${r0+2}C${c0+1} → blocked R${r0+2}C${nc+1}.`, 'text-indigo-400');
+                            }
+                        }
+                    }
+                } else {
+                    // 3×1 — block middle
+                    if (isHorizontal) {
+                        for (const nr of [r0 - 1, r0 + 1]) {
+                            if (nr >= 0 && nr < currentSize && grid[nr][c0+1] === 0) {
+                                grid[nr][c0+1] = 2; blockedSomething = true;
+                                logMessage(`[RULE: ADJACENT BLOCK] 3×1 at R${r0+1}C${c0+1}-C${c0+3} → blocked R${nr+1}C${c0+2}.`, 'text-indigo-400');
+                            }
+                        }
+                    } else {
+                        for (const nc of [c0 - 1, c0 + 1]) {
+                            if (nc >= 0 && nc < currentSize && grid[r0+1][nc] === 0) {
+                                grid[r0+1][nc] = 2; blockedSomething = true;
+                                logMessage(`[RULE: ADJACENT BLOCK] 3×1 at R${r0+1}C${c0+1}-R${r0+3}C${c0+1} → blocked R${r0+2}C${nc+1}.`, 'text-indigo-400');
+                            }
+                        }
+                    }
+                }
+            }
+            if (blockedSomething) return true;
+            return false;
+        }
+
         // Backtracking fallback search executed when deterministic rules dry up
         function runBacktrackGuess() {
             // Pick cell minimizing open_in_row × open_in_col × open_in_region
@@ -1060,6 +1143,7 @@
             if (runConfinedGroup()) { trackChanges(); renderGrid(); return true; }
             if (runDisjointConfinedGroup()) { trackChanges(); renderGrid(); return true; }
             if (runAdjacencyTrap()) { trackChanges(); renderGrid(); return true; }
+            if (runAdjacentPairBlock()) { trackChanges(); renderGrid(); return true; }
 
             // Check if solved
             const totalCats = grid.flat().filter(cell => cell === 1).length;
