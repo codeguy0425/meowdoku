@@ -754,15 +754,7 @@
                             logMessage(`[RULE: INTERSECTION] Region ${rId} open cells all in row ${targetRow+1} → blocked R${targetRow+1}C${c+1} (region ${regions[targetRow][c]} can't be here).`, 'text-amber-500');
                         }
                     }
-                    if (blockedSomething) {
-                        // Immediately check if this region now forms a 2×1/3×1
-                        if (checkRegionAdjacentPair(rId)) return true;
-                        // Check if the affected row now has an adjacent pair
-                        if (checkRowAdjacent(targetRow)) { if (runSingletons()) return true; return true; }
-                        // Re-check singletons
-                        if (runSingletons()) return true;
-                        return true;
-                    }
+                    if (blockedSomething) return true;
                 }
 
                 // Check Col containment
@@ -777,15 +769,7 @@
                             logMessage(`[RULE: INTERSECTION] Region ${rId} open cells all in col ${targetCol+1} → blocked R${r+1}C${targetCol+1} (region ${regions[r][targetCol]} can't be here).`, 'text-amber-500');
                         }
                     }
-                    if (blockedSomething) {
-                        // Immediately check if this region now forms a 2×1/3×1
-                        if (checkRegionAdjacentPair(rId)) return true;
-                        // Check if the affected column now has an adjacent pair
-                        if (checkColAdjacent(targetCol)) { if (runSingletons()) return true; return true; }
-                        // Re-check singletons
-                        if (runSingletons()) return true;
-                        return true;
-                    }
+                    if (blockedSomething) return true;
                 }
             }
             return false;
