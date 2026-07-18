@@ -654,7 +654,77 @@
             return blockedSomething;
         }
 
-        // Intersection rule — per region: block, then immediately check for 2×1/3×1 and singleton
+        // Check if a specific row has exactly 2-3 adjacent open cells and block shared neighbors
+        function checkRowAdjacent(row) {
+            let hasCat = false;
+            let openCols = [];
+            for (let c = 0; c < currentSize; c++) {
+                if (grid[row][c] === 1) hasCat = true;
+                if (grid[row][c] === 0) openCols.push(c);
+            }
+            if (hasCat || openCols.length < 2 || openCols.length > 3) return false;
+            const adjacent = openCols.every((c, i) => i === 0 || c === openCols[i-1] + 1);
+            if (!adjacent) return false;
+
+            const c0 = openCols[0];
+            if (openCols.length === 2) {
+                for (const nr of [row - 1, row + 1]) {
+                    if (nr >= 0 && nr < currentSize && grid[nr][c0] === 0) {
+                        grid[nr][c0] = 2;
+                        logMessage(`[RULE: ADJACENT ROW/COL] Row ${row+1} 2 cells at C${c0+1}-C${c0+2} → blocked R${nr+1}C${c0+1}.`, 'text-sky-400');
+                    }
+                    if (nr >= 0 && nr < currentSize && grid[nr][c0+1] === 0) {
+                        grid[nr][c0+1] = 2;
+                        logMessage(`[RULE: ADJACENT ROW/COL] Row ${row+1} 2 cells at C${c0+1}-C${c0+2} → blocked R${nr+1}C${c0+2}.`, 'text-sky-400');
+                    }
+                }
+            } else {
+                for (const nr of [row - 1, row + 1]) {
+                    if (nr >= 0 && nr < currentSize && grid[nr][c0+1] === 0) {
+                        grid[nr][c0+1] = 2;
+                        logMessage(`[RULE: ADJACENT ROW/COL] Row ${row+1} 3 cells at C${c0+1}-C${c0+3} → blocked R${nr+1}C${c0+2}.`, 'text-sky-400');
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Check if a specific column has exactly 2-3 adjacent open cells and block shared neighbors
+        function checkColAdjacent(col) {
+            let hasCat = false;
+            let openRows = [];
+            for (let r = 0; r < currentSize; r++) {
+                if (grid[r][col] === 1) hasCat = true;
+                if (grid[r][col] === 0) openRows.push(r);
+            }
+            if (hasCat || openRows.length < 2 || openRows.length > 3) return false;
+            const adjacent = openRows.every((r, i) => i === 0 || r === openRows[i-1] + 1);
+            if (!adjacent) return false;
+
+            const r0 = openRows[0];
+            if (openRows.length === 2) {
+                for (const nc of [col - 1, col + 1]) {
+                    if (nc >= 0 && nc < currentSize && grid[r0][nc] === 0) {
+                        grid[r0][nc] = 2;
+                        logMessage(`[RULE: ADJACENT ROW/COL] Col ${col+1} 2 cells at R${r0+1}-R${r0+2} → blocked R${r0+1}C${nc+1}.`, 'text-sky-400');
+                    }
+                    if (nc >= 0 && nc < currentSize && grid[r0+1][nc] === 0) {
+                        grid[r0+1][nc] = 2;
+                        logMessage(`[RULE: ADJACENT ROW/COL] Col ${col+1} 2 cells at R${r0+1}-R${r0+2} → blocked R${r0+2}C${nc+1}.`, 'text-sky-400');
+                    }
+                }
+            } else {
+                for (const nc of [col - 1, col + 1]) {
+                    if (nc >= 0 && nc < currentSize && grid[r0+1][nc] === 0) {
+                        grid[r0+1][nc] = 2;
+                        logMessage(`[RULE: ADJACENT ROW/COL] Col ${col+1} 3 cells at R${r0+1}-R${r0+3} → blocked R${r0+2}C${nc+1}.`, 'text-sky-400');
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Intersection rule — per region: block, then immediately check for 2×1/3×1, row/col pair, and singleton
         function runIntersection() {
             const uniqueRegions = [...new Set(regions.flat())];
 
@@ -687,7 +757,9 @@
                     if (blockedSomething) {
                         // Immediately check if this region now forms a 2×1/3×1
                         if (checkRegionAdjacentPair(rId)) return true;
-                        // Immediately re-check singletons
+                        // Check if the affected row now has an adjacent pair
+                        if (checkRowAdjacent(targetRow)) { if (runSingletons()) return true; return true; }
+                        // Re-check singletons
                         if (runSingletons()) return true;
                         return true;
                     }
@@ -708,7 +780,9 @@
                     if (blockedSomething) {
                         // Immediately check if this region now forms a 2×1/3×1
                         if (checkRegionAdjacentPair(rId)) return true;
-                        // Immediately re-check singletons
+                        // Check if the affected column now has an adjacent pair
+                        if (checkColAdjacent(targetCol)) { if (runSingletons()) return true; return true; }
+                        // Re-check singletons
                         if (runSingletons()) return true;
                         return true;
                     }
