@@ -300,6 +300,7 @@
         let lastUpdatedCells = [];
         let currentTool = 'none';
         let swapPending = null;
+        let swapSourceType = null; // 'orange' or 'blue' when a color source is picked
         let displayColors = {}; // maps region ID → hex color for display
         let sourceColorOrange = '#fb923c';
         let sourceColorBlue = '#60a5fa';
@@ -333,6 +334,7 @@
                         logMessage(`[SWAP] First: region ${rId}. Click another region or color to swap/copy.`, 'text-orange-400');
                     } else if (swapPending === rId) {
                         swapPending = null;
+                        swapSourceType = null;
                         logMessage(`[SWAP] Cancelled.`, 'text-orange-400');
                     } else if (typeof swapPending === 'number') {
                         const fromId = swapPending;
@@ -343,31 +345,41 @@
                         logMessage(`[SWAP] Swapped region ${fromId} ↔ ${rId}.`, 'text-orange-400');
                     } else {
                         // swapPending is a color hex — apply to region, and put region's old color back on the source
-                        const sourceBtn = document.querySelector(`[data-tool="${swapPending === '#fb923c' ? 'color-orange' : 'color-darkblue'}"]`);
+                        const sourceTool = swapSourceType === 'orange' ? 'color-orange' : 'color-darkblue';
+                        const sourceBtn = document.querySelector(`[data-tool="${sourceTool}"]`);
                         const oldColor = displayColors[rId];
                         displayColors[rId] = swapPending;
                         REGION_TEXT_COLORS[rId] = getTextColorForBg(swapPending);
                         if (sourceBtn) {
-                            if (sourceBtn.dataset.tool === 'color-orange') sourceColorOrange = oldColor;
+                            if (swapSourceType === 'orange') sourceColorOrange = oldColor;
                             else sourceColorBlue = oldColor;
                             sourceBtn.style.backgroundColor = oldColor;
                             sourceBtn.style.color = getTextColorForBg(oldColor);
-                            sourceBtn.title = oldColor;
                         }
+                        swapPending = null;
+                        swapSourceType = null;
                         swapPending = null;
                         renderGrid(); updateSwatchStyles();
                         logMessage(`[SWAP] Applied color to region ${rId}.`, 'text-emerald-400');
                     }
                 } else {
-                    const hex = tool === 'color-orange' ? '#fb923c' : '#60a5fa';
-                    if (swapPending === null) { swapPending = hex; logMessage(`[SWAP] Color picked. Click a region to apply.`, 'text-orange-400'); }
-                    else { swapPending = null; logMessage(`[SWAP] Cancelled.`, 'text-orange-400'); }
+                    const hex = tool === 'color-orange' ? sourceColorOrange : sourceColorBlue;
+                    if (swapPending === null) {
+                        swapPending = hex;
+                        swapSourceType = tool === 'color-orange' ? 'orange' : 'blue';
+                        logMessage(`[SWAP] Color picked. Click a region to apply.`, 'text-orange-400');
+                    } else {
+                        swapPending = null;
+                        swapSourceType = null;
+                        logMessage(`[SWAP] Cancelled.`, 'text-orange-400');
+                    }
                 }
                 return;
             }
 
             currentTool = tool;
             swapPending = null;
+            swapSourceType = null;
             document.querySelectorAll('.tool-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.tool === tool) {
