@@ -106,10 +106,10 @@
                     <button onclick="setTool('swap')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="swap">
                         <span>🔁</span> Swap
                     </button>
-                    <button onclick="setTool('paint')" class="tool-btn flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all" data-tool="paint">
-                        <span>🎨</span> Paint
-                    </button>
-                    <input type="color" id="colorPicker" value="#a2e082" class="h-8 w-8 rounded-lg border-2 border-slate-700 cursor-pointer" style="display:none">
+                    <div class="flex gap-1.5 ml-2 pl-2 border-l border-slate-700">
+                        <button onclick="setTool('color-orange')" class="tool-btn flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="color-orange" style="background:#f97316;color:#fff" title="Orange">O</button>
+                        <button onclick="setTool('color-darkblue')" class="tool-btn flex items-center justify-center w-8 h-8 rounded-lg border-2 border-transparent hover:border-white/40 transition-all text-xs font-bold shadow-sm" data-tool="color-darkblue" style="background:#1e3a8a;color:#fff" title="Dark Blue">B</button>
+                    </div>
                     <div class="w-px h-6 bg-slate-700 mx-1"></div>
                     <!-- Region color swatches -->
                     <div class="flex flex-wrap gap-1.5">
@@ -301,7 +301,8 @@
             cat: '🐱 Cat',
             block: '❌ Block',
             swap: '🔁 Swap',
-            paint: '🎨 Paint',
+            'color-orange': '🟠 Orange',
+            'color-darkblue': '🔵 Dark Blue',
             region0: '🎨 Region 0',
             region1: '🎨 Region 1',
             region2: '🎨 Region 2',
@@ -315,48 +316,40 @@
         };
 
         function setTool(tool) {
-            // If in swap mode and clicking a region swatch, handle swap selection
-            if (currentTool === 'swap' && tool.startsWith('region')) {
-                const rId = parseInt(tool.replace('region', ''), 10);
-                if (swapPending === null) {
-                    swapPending = rId;
-                    logMessage(`[SWAP] First region selected: ${rId}. Click another region swatch to swap colors.`, 'text-orange-400');
-                } else if (swapPending === rId) {
-                    swapPending = null;
-                    logMessage(`[SWAP] Same region selected — cancelled.`, 'text-orange-400');
+            // If in swap mode and clicking a region or color source
+            if (currentTool === 'swap' && (tool.startsWith('region') || tool.startsWith('color-'))) {
+                if (tool.startsWith('region')) {
+                    const rId = parseInt(tool.replace('region', ''), 10);
+                    if (swapPending === null) {
+                        swapPending = rId;
+                        logMessage(`[SWAP] First: region ${rId}. Click another region or color to swap/copy.`, 'text-orange-400');
+                    } else if (swapPending === rId) {
+                        swapPending = null;
+                        logMessage(`[SWAP] Cancelled.`, 'text-orange-400');
+                    } else if (typeof swapPending === 'number') {
+                        const fromId = swapPending;
+                        swapPending = null;
+                        const tmpC = REGION_COLORS[fromId]; REGION_COLORS[fromId] = REGION_COLORS[rId]; REGION_COLORS[rId] = tmpC;
+                        const tmpT = REGION_TEXT_COLORS[fromId]; REGION_TEXT_COLORS[fromId] = REGION_TEXT_COLORS[rId]; REGION_TEXT_COLORS[rId] = tmpT;
+                        renderGrid(); updateSwatchStyles();
+                        logMessage(`[SWAP] Swapped region ${fromId} ↔ ${rId}.`, 'text-orange-400');
+                    } else {
+                        REGION_COLORS[rId] = swapPending;
+                        REGION_TEXT_COLORS[rId] = getTextColorForBg(swapPending);
+                        swapPending = null;
+                        renderGrid(); updateSwatchStyles();
+                        logMessage(`[SWAP] Applied color to region ${rId}.`, 'text-emerald-400');
+                    }
                 } else {
-                    const fromId = swapPending;
-                    const toId = rId;
-                    swapPending = null;
-                    const tempColor = REGION_COLORS[fromId];
-                    REGION_COLORS[fromId] = REGION_COLORS[toId];
-                    REGION_COLORS[toId] = tempColor;
-                    const tempText = REGION_TEXT_COLORS[fromId];
-                    REGION_TEXT_COLORS[fromId] = REGION_TEXT_COLORS[toId];
-                    REGION_TEXT_COLORS[toId] = tempText;
-                    renderGrid();
-                    updateSwatchStyles();
-                    logMessage(`[SWAP] Swapped region ${fromId} ↔ ${toId}.`, 'text-orange-400');
+                    const hex = tool === 'color-orange' ? '#f97316' : '#1e3a8a';
+                    if (swapPending === null) { swapPending = hex; logMessage(`[SWAP] Color picked. Click a region to apply.`, 'text-orange-400'); }
+                    else { swapPending = null; logMessage(`[SWAP] Cancelled.`, 'text-orange-400'); }
                 }
-                return;
-            }
-
-            // If in paint mode and clicking a region swatch, apply picked color
-            if (currentTool === 'paint' && tool.startsWith('region')) {
-                const rId = parseInt(tool.replace('region', ''), 10);
-                const pickedColor = document.getElementById('colorPicker').value;
-                REGION_COLORS[rId] = pickedColor;
-                REGION_TEXT_COLORS[rId] = getTextColorForBg(pickedColor);
-                renderGrid();
-                updateSwatchStyles();
-                logMessage(`[PAINT] Region ${rId} → ${pickedColor}.`, 'text-emerald-400');
                 return;
             }
 
             currentTool = tool;
             swapPending = null;
-            // Show color picker only in paint mode
-            document.getElementById('colorPicker').style.display = tool === 'paint' ? 'inline-block' : 'none';
             document.querySelectorAll('.tool-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.tool === tool) {
